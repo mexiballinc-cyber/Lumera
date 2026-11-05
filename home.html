@@ -3,179 +3,243 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lumera - Inicio</title>
+  <meta name="theme-color" content="#090909">
+  <title>Lumera — Inicio</title>
   <link rel="icon" type="image/png" href="https://i.imgur.com/cCqp6Qt.png">
   <link rel="stylesheet" href="style.css">
-  <style>
-    .navbar {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 15px 40px;
-      position: fixed;
-      top: 0; width: 100%;
-      z-index: 100;
-      background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
-    }
-    .nav-left { display: flex; align-items: center; gap: 30px; }
-    .nav-logo { height: 35px; }
-    .nav-links { display: flex; gap: 20px; list-style: none; }
-    .nav-item { cursor: pointer; font-size: 15px; color: var(--text-muted); transition: color 0.2s; }
-    .nav-item.active, .nav-item:hover { color: #fff; font-weight: 600; }
-    
-    /* Hero Dinámico */
-    .hero {
-      height: 70vh;
-      position: relative;
-      background-size: cover;
-      background-position: center;
-      display: flex;
-      align-items: flex-end;
-      padding: 60px 40px;
-    }
-    .hero-overlay {
-      position: absolute; inset: 0;
-      background: linear-gradient(0deg, var(--bg-primary) 0%, rgba(8,8,8,0.4) 50%, transparent 100%);
-    }
-    .hero-content { position: relative; z-index: 2; max-width: 600px; }
-    .hero-title { font-size: 3rem; margin-bottom: 10px; font-weight: 800; }
-    .hero-btn {
-      padding: 12px 24px;
-      background: var(--accent-color);
-      color: #000;
-      font-weight: bold;
-      border-radius: 6px;
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-    }
-
-    /* Filas de Contenido */
-    .content-section { padding: 20px 40px; }
-    .row-title { font-size: 1.4rem; margin-bottom: 15px; }
-    .media-row {
-      display: flex;
-      gap: 15px;
-      overflow-x: auto;
-      padding-bottom: 15px;
-      scroll-behavior: smooth;
-    }
-    .media-row::-webkit-scrollbar { height: 6px; }
-    .media-row::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
-    .card-poster {
-      min-width: 180px;
-      height: 260px;
-      border-radius: 6px;
-      object-fit: cover;
-      cursor: pointer;
-      transition: transform 0.2s;
-    }
-    .card-poster:hover { transform: scale(1.05); }
-  </style>
 </head>
-<body>
-  <div class="bg-glow"></div>
+<body class="home-page">
+  <div class="ambient ambient-one" aria-hidden="true"></div>
+  <div class="ambient ambient-two" aria-hidden="true"></div>
 
-  <!-- Navbar Navigation -->
-  <nav class="navbar">
-    <div class="nav-left">
-      <img src="https://i.imgur.com/0QS9bH3.png" class="nav-logo" alt="Lumera">
-      <ul class="nav-links">
-        <li class="nav-item active" data-filter="all" data-i18n="home">Inicio</li>
-        <li class="nav-item" data-filter="movie" data-i18n="movies">Películas</li>
-        <li class="nav-item" data-filter="series" data-i18n="series">Series</li>
-        <li class="nav-item" data-filter="kids" data-i18n="kids">Niños</li>
-      </ul>
+  <aside class="side-rail" aria-label="Navegación principal">
+    <a class="rail-brand" href="home.html" aria-label="Lumera, inicio"><img src="https://i.imgur.com/cCqp6Qt.png" alt="Lumera"></a>
+    <nav class="rail-nav">
+      <button class="rail-button active" data-filter="all" title="Inicio" aria-label="Inicio"><svg viewBox="0 0 24 24"><path d="m3 10 9-7 9 7v10a1 1 0 0 1-1 1h-5v-7H9v7H4a1 1 0 0 1-1-1z"/></svg></button>
+      <button class="rail-button" data-filter="movie" title="Películas" aria-label="Películas"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M7 4v16M17 4v16M3 9h4m-4 6h4m10-6h4m-4 6h4"/></svg></button>
+      <button class="rail-button" data-filter="series" title="Series" aria-label="Series"><svg viewBox="0 0 24 24"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="m10 9 5 3-5 3z"/></svg></button>
+      <button class="rail-button" data-filter="kids" title="Kids" aria-label="Kids"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="9"/><path d="M8 14s1.5 2 4 2 4-2 4-2M9 9h.01M15 9h.01"/></svg></button>
+    </nav>
+    <div class="rail-bottom">
+      <button class="rail-button" id="searchOpen" title="Buscar" aria-label="Buscar"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>
+      <button class="rail-button admin-only" id="adminOpen" title="Panel de administración" aria-label="Panel de administración" hidden><svg viewBox="0 0 24 24"><path d="m14 6 4 4M4 20l4-.8L19.2 8a2.1 2.1 0 0 0-3-3L5 16.2z"/><path d="M13 20h8"/></svg></button>
+      <button class="rail-button" id="settingsOpen" title="Configuración" aria-label="Configuración"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="m19.4 15 .1.1 1.4 1.1-1.4 2.4-1.7-.6a8 8 0 0 1-1.5.9l-.3 1.8h-2.8l-.3-1.8a8 8 0 0 1-1.5-.9l-1.7.6-1.4-2.4 1.4-1.1a7 7 0 0 1 0-1.8l-1.4-1.1 1.4-2.4 1.7.6a8 8 0 0 1 1.5-.9l.3-1.8h2.8l.3 1.8a8 8 0 0 1 1.5.9l1.7-.6 1.4 2.4-1.4 1.1a7 7 0 0 1 0 1.7Z" transform="translate(-1 -1)"/></svg></button>
     </div>
-    <div style="display:flex; gap:15px; align-items:center;">
-      <a href="spark.html" style="color:var(--accent-color); font-weight:bold;">Sparks⚡</a>
-      <img id="navAvatar" src="" style="width:36px; height:36px; border-radius:4px; cursor:pointer;" onclick="window.location.href='auth.html'">
-    </div>
-  </nav>
+  </aside>
 
-  <!-- Hero Slider Dinámico -->
-  <header id="mainHero" class="hero">
-    <div class="hero-overlay"></div>
-    <div class="hero-content">
-      <h1 id="heroTitle" class="hero-title">Cargando...</h1>
-      <button id="heroPlayBtn" class="hero-btn">
-        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-        <span data-i18n="play">Reproducir</span>
-      </button>
-    </div>
-  </header>
+  <main class="home-main">
+    <header class="main-header">
+      <a class="wordmark" href="home.html"><img src="https://i.imgur.com/0QS9bH3.png" alt="Lumera"></a>
+      <nav class="top-nav" aria-label="Secciones">
+        <button class="top-nav-item active" data-filter="all">Inicio</button>
+        <button class="top-nav-item" data-filter="movie">Películas</button>
+        <button class="top-nav-item" data-filter="series">Series</button>
+        <button class="top-nav-item" data-filter="kids">Kids</button>
+        <a class="top-nav-item sparks-link" href="spark.html">Sparks <span aria-hidden="true">✦</span></a>
+      </nav>
+      <div class="header-actions">
+        <button class="icon-action mobile-search" id="mobileSearchOpen" aria-label="Buscar" title="Buscar"><svg viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20 20-4-4"/></svg></button>
+        <button class="icon-action mobile-settings" id="mobileSettingsOpen" aria-label="Configuración" title="Configuración"><svg viewBox="0 0 24 24"><circle cx="12" cy="12" r="3"/><path d="M19 13.5a7 7 0 0 0 0-3l1.6-1.2-1.7-3-1.9.7a7 7 0 0 0-2.6-1.5L14 3h-4l-.4 2.5A7 7 0 0 0 7 7l-1.9-.7-1.7 3L5 10.5a7 7 0 0 0 0 3l-1.6 1.2 1.7 3L7 17a7 7 0 0 0 2.6 1.5L10 21h4l.4-2.5A7 7 0 0 0 17 17l1.9.7 1.7-3z"/></svg></button>
+        <a class="account-link" href="auth.html" id="accountLink"><span class="account-avatar"><svg viewBox="0 0 24 24"><circle cx="12" cy="8" r="4"/><path d="M4 21a8 8 0 0 1 16 0"/></svg></span><span id="accountLabel">Iniciar sesión</span></a>
+      </div>
+    </header>
 
-  <!-- Filas Filtradas -->
-  <section class="content-section">
-    <h2 class="row-title">Continuar Viendo</h2>
-    <div id="continueWatchingRow" class="media-row"></div>
-  </section>
+    <section class="hero" id="mainHero" aria-label="Contenido destacado">
+      <div class="hero-image" id="heroImage"></div>
+      <div class="hero-shade"></div>
+      <div class="hero-copy">
+        <span class="eyebrow"><span class="eyebrow-dot"></span> TU PRÓXIMA HISTORIA</span>
+        <h1 id="heroTitle">Descubre Lumera</h1>
+        <p id="heroDescription">Películas y series para disfrutar a tu manera.</p>
+        <div class="hero-meta" id="heroMeta"></div>
+        <button class="gold-button" id="heroPlayBtn"><svg viewBox="0 0 24 24"><path d="m8 5 12 7-12 7z"/></svg><span>Ver detalles</span></button>
+      </div>
+      <div class="hero-pagination" id="heroPagination" aria-label="Diapositivas destacadas"></div>
+      <div class="hero-status" id="catalogStatus" role="status">Conectando con tu catálogo…</div>
+    </section>
 
-  <section class="content-section">
-    <h2 id="sectionTitle" class="row-title">Catálogo Principal</h2>
-    <div id="mainCatalogRow" class="media-row"></div>
-  </section>
+    <section class="catalog-area" aria-live="polite">
+      <section class="media-section" id="continueSection" hidden>
+        <div class="section-heading"><div><p class="section-kicker">RETOMA DONDE LO DEJASTE</p><h2>Continuar viendo</h2></div><span class="section-count" id="continueCount"></span></div>
+        <div class="media-row" id="continueRow"></div>
+      </section>
+      <section class="media-section" id="newSection" hidden>
+        <div class="section-heading"><div><p class="section-kicker">RECIÉN LLEGADOS</p><h2>Nuevos agregados</h2></div></div>
+        <div class="media-row" id="newRow"></div>
+      </section>
+      <section class="media-section" id="mainSection">
+        <div class="section-heading"><div><p class="section-kicker" id="catalogKicker">SELECCIÓN LUMERA</p><h2 id="sectionTitle">Explora el catálogo</h2></div><span class="section-count" id="catalogCount"></span></div>
+        <div class="media-row" id="mainCatalogRow"></div>
+        <div class="empty-state" id="emptyState" hidden><div class="empty-orb"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8m-8 4h5"/></svg></div><h3 id="emptyTitle">Tu catálogo te espera</h3><p id="emptyMessage">Cuando se publique contenido, aparecerá aquí.</p></div>
+      </section>
+    </section>
+  </main>
+
+  <dialog class="glass-dialog" id="searchDialog">
+    <form method="dialog" class="dialog-shell" id="searchForm">
+      <div class="dialog-heading"><div><p class="section-kicker">ENCUENTRA TU PRÓXIMA HISTORIA</p><h2>Buscar contenido</h2></div><button class="close-button" value="close" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+      <label class="field-label" for="searchQuery">Título</label><input id="searchQuery" class="glass-input" type="search" placeholder="¿Qué quieres ver?" autocomplete="off">
+      <div class="filter-grid"><div><label class="field-label" for="categoryFilter">Categoría</label><select class="glass-input" id="categoryFilter"><option value="">Todas</option></select></div><div><label class="field-label" for="yearFilter">Año</label><select class="glass-input" id="yearFilter"><option value="">Cualquier año</option></select></div><div><label class="field-label" for="ageFilter">Edad máxima</label><select class="glass-input" id="ageFilter"><option value="">Sin límite</option><option value="7">7+</option><option value="10">10+</option><option value="13">13+</option><option value="16">16+</option><option value="18">18+</option></select></div></div>
+      <div class="search-results-head"><span>Resultados</span><span id="searchResultCount">0</span></div><div class="search-results" id="searchResults"></div>
+    </form>
+  </dialog>
+
+  <dialog class="glass-dialog settings-dialog" id="settingsDialog">
+    <form method="dialog" class="dialog-shell"><div class="dialog-heading"><div><p class="section-kicker">A TU ESTILO</p><h2>Configuración</h2></div><button class="close-button" value="close" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
+      <label class="field-label" for="languageSelect">Idioma de la interfaz</label><select class="glass-input" id="languageSelect"><option value="es">Español</option><option value="en">English</option><option value="pt">Português</option><option value="fr">Français</option></select>
+      <label class="field-label color-label" for="accentPicker">Color de acento</label><div class="color-picker-row"><span>Detalles, bordes y resplandores</span><input id="accentPicker" type="color" value="#d4af37" aria-label="Elegir color de acento"></div>
+      <p class="settings-note">Tu idioma y color se guardan en este dispositivo.</p>
+    </form>
+  </dialog>
 
   <script type="module">
-    import { db } from './firebase.js';
-    import { collection, getDocs } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+    import { db, auth } from './firebase.js';
+    import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
+    import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
 
-    const activeProfile = JSON.parse(localStorage.getItem('lumera_active_profile') || '{}');
-    document.getElementById('navAvatar').src = activeProfile.avatar || 'https://i.imgur.com/cCqp6Qt.png';
+    const ADMIN_EMAIL = 'jgonzalezgutierrez1@bcedu.mx';
+    const LANGS = {
+      es: { home:'Inicio', movies:'Películas', series:'Series', kids:'Kids', signIn:'Iniciar sesión', explore:'Explora el catálogo', noContent:'Tu catálogo te espera', empty:'Cuando se publique contenido, aparecerá aquí.', loading:'Conectando con tu catálogo…', error:'No se pudo cargar el catálogo. Revisa la conexión y los permisos de Firebase.', play:'Ver detalles', featured:'TU PRÓXIMA HISTORIA', search:'Buscar contenido', settings:'Configuración', continue:'Continuar viendo', new:'Nuevos agregados' },
+      en: { home:'Home', movies:'Movies', series:'Series', kids:'Kids', signIn:'Sign in', explore:'Explore the catalog', noContent:'Your catalog is waiting', empty:'Published titles will appear here.', loading:'Connecting to your catalog…', error:'Could not load the catalog. Check your connection and Firebase permissions.', play:'View details', featured:'YOUR NEXT STORY', search:'Search titles', settings:'Settings', continue:'Continue watching', new:'Recently added' },
+      pt: { home:'Início', movies:'Filmes', series:'Séries', kids:'Kids', signIn:'Entrar', explore:'Explore o catálogo', noContent:'Seu catálogo está esperando', empty:'Os títulos publicados aparecerão aqui.', loading:'Conectando ao catálogo…', error:'Não foi possível carregar o catálogo. Verifique a conexão e as permissões do Firebase.', play:'Ver detalhes', featured:'SUA PRÓXIMA HISTÓRIA', search:'Buscar conteúdo', settings:'Configurações', continue:'Continue assistindo', new:'Adicionados recentemente' },
+      fr: { home:'Accueil', movies:'Films', series:'Séries', kids:'Kids', signIn:'Se connecter', explore:'Explorer le catalogue', noContent:'Votre catalogue vous attend', empty:'Les titres publiés apparaîtront ici.', loading:'Connexion au catalogue…', error:'Impossible de charger le catalogue. Vérifiez la connexion et les autorisations Firebase.', play:'Voir les détails', featured:'VOTRE PROCHAINE HISTOIRE', search:'Rechercher', settings:'Paramètres', continue:'Continuer à regarder', new:'Ajouts récents' }
+    };
+    const $ = (id) => document.getElementById(id);
+    const lang = () => LANGS[localStorage.getItem('lumera_lang') || 'es'] || LANGS.es;
+    const profile = JSON.parse(localStorage.getItem('lumera_active_profile') || 'null');
+    let mediaItems = [];
+    let activeFilter = 'all';
+    let heroItems = [];
+    let heroIndex = 0;
 
-    let allMedia = [];
-
-    async function loadCatalog() {
-      const querySnapshot = await getDocs(collection(db, "content"));
-      allMedia = [];
-      querySnapshot.forEach((doc) => {
-        allMedia.push({ id: doc.id, ...doc.data() });
-      });
-
-      renderFilter('all');
-      setupHeroSlider();
+    function setTheme(hex) {
+      const safe = /^#[0-9a-f]{6}$/i.test(hex) ? hex : '#d4af37';
+      document.documentElement.style.setProperty('--accent-color', safe);
+      document.documentElement.style.setProperty('--accent-glow', `${safe}55`);
+      $('accentPicker').value = safe;
     }
-
-    function renderFilter(filterType) {
-      const container = document.getElementById('mainCatalogRow');
-      container.innerHTML = '';
-
-      let filtered = allMedia;
-
-      // Filtrado automático para el perfil Kids (ageRating <= 10)
-      if (activeProfile.isKids || filterType === 'kids') {
-        filtered = filtered.filter(item => item.ageRating <= 10);
-      } else if (filterType !== 'all') {
-        filtered = filtered.filter(item => item.type === filterType);
-      }
-
-      filtered.forEach(item => {
-        const img = document.createElement('img');
-        img.src = item.images?.poster || 'https://via.placeholder.com/180x260';
-        img.className = 'card-poster';
-        img.onclick = () => window.location.href = `details.html?id=${item.id}`;
-        container.appendChild(img);
-      });
-    }
-
-    // Configuración básica del slider Hero
-    function setupHeroSlider() {
-      if (allMedia.length === 0) return;
-      const featured = allMedia[0];
-      document.getElementById('mainHero').style.backgroundImage = `url('${featured.images?.banner}')`;
-      document.getElementById('heroTitle').textContent = featured.title;
-      document.getElementById('heroPlayBtn').onclick = () => window.location.href = `details.html?id=${featured.id}`;
-    }
-
-    // Tab Listeners
-    document.querySelectorAll('.nav-item').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
-        e.target.classList.add('active');
-        renderFilter(e.target.getAttribute('data-filter'));
-      });
+    setTheme(localStorage.getItem('lumera_accent_color') || '#d4af37');
+    $('languageSelect').value = localStorage.getItem('lumera_lang') || 'es';
+    $('accountLabel').textContent = profile?.name || lang().signIn;
+    if (profile?.avatar) $('accountLink').querySelector('.account-avatar').innerHTML = `<img src="${escapeAttr(profile.avatar)}" alt="">`;
+    onAuthStateChanged(auth, (user) => {
+      if (user?.email?.toLowerCase() === ADMIN_EMAIL.toLowerCase()) $('adminOpen').hidden = false;
+      if (user && !profile) $('accountLabel').textContent = user.displayName || user.email || lang().signIn;
     });
 
+    function escapeAttr(value='') { return String(value).replace(/[&<>"']/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c])); }
+    function posterOf(item) { return item.images?.poster || item.poster || ''; }
+    function synopsisOf(item) { const selected = localStorage.getItem('lumera_lang') || 'es'; return item.i18n?.[selected]?.synopsis || item.i18n?.es?.synopsis || item.synopsis || ''; }
+    function inKids(item) { return Number(item.ageRating ?? item.age ?? 99) <= 10; }
+    function prettyType(item) { return item.type === 'series' ? 'Serie' : 'Película'; }
+    function filteredItems(filter=activeFilter) {
+      return mediaItems.filter(item => {
+        if (profile?.isKids && !inKids(item)) return false;
+        if (filter === 'kids') return inKids(item);
+        if (filter === 'movie' || filter === 'series') return item.type === filter;
+        return true;
+      });
+    }
+    function makeCard(item, compact=false) {
+      const card = document.createElement('a');
+      card.className = `media-card${compact ? ' compact-card' : ''}`;
+      card.href = `details.html?id=${encodeURIComponent(item.id)}`;
+      const poster = posterOf(item);
+      card.innerHTML = `<div class="poster-frame">${poster ? `<img loading="lazy" src="${escapeAttr(poster)}" alt="${escapeAttr(item.title || 'Contenido')}">` : '<div class="poster-fallback"><span>L</span></div>'}<span class="poster-type">${prettyType(item)}</span><span class="poster-play" aria-hidden="true"><svg viewBox="0 0 24 24"><path d="m8 5 12 7-12 7z"/></svg></span></div><span class="card-title">${escapeAttr(item.title || 'Sin título')}</span><span class="card-subtitle">${escapeAttr(String(item.year || ''))}${item.ageRating != null ? ` · ${escapeAttr(String(item.ageRating))}+` : ''}</span>`;
+      return card;
+    }
+    function renderRow(containerId, items, compact=false) {
+      const container = $(containerId); container.replaceChildren();
+      items.forEach(item => container.appendChild(makeCard(item, compact)));
+    }
+    function renderCatalog() {
+      const items = filteredItems();
+      const titles = lang();
+      $('sectionTitle').textContent = activeFilter === 'movie' ? titles.movies : activeFilter === 'series' ? titles.series : activeFilter === 'kids' ? titles.kids : titles.explore;
+      $('catalogCount').textContent = `${items.length} ${items.length === 1 ? 'título' : 'títulos'}`;
+      renderRow('mainCatalogRow', items);
+      $('emptyState').hidden = items.length > 0;
+      $('emptyTitle').textContent = titles.noContent;
+      $('emptyMessage').textContent = mediaItems.length ? 'Prueba con otra sección o ajusta los filtros.' : titles.empty;
+      $('catalogStatus').hidden = true;
+      $('mainCatalogRow').hidden = items.length === 0;
+      $('catalogKicker').textContent = activeFilter === 'kids' ? 'UN ESPACIO PARA TODA LA FAMILIA' : 'SELECCIÓN LUMERA';
+      document.querySelectorAll('[data-filter]').forEach(button => button.classList.toggle('active', button.dataset.filter === activeFilter));
+      if (activeFilter === 'all') renderContinueAndNew();
+      else { $('continueSection').hidden = true; $('newSection').hidden = true; }
+    }
+    function renderContinueAndNew() {
+      let history = [];
+      try { history = JSON.parse(localStorage.getItem('lumera_continue_watching') || localStorage.getItem('lumera_watch_history') || '[]'); } catch { history = []; }
+      const ids = new Set(history.map(entry => typeof entry === 'string' ? entry : entry.id));
+      const continuing = mediaItems.filter(item => ids.has(item.id) && (!profile?.isKids || inKids(item)));
+      $('continueSection').hidden = continuing.length === 0;
+      $('continueCount').textContent = continuing.length ? `${continuing.length}` : '';
+      if (continuing.length) renderRow('continueRow', continuing, true);
+      const newest = [...mediaItems].filter(item => !profile?.isKids || inKids(item)).sort((a,b) => Number(b.createdAt?.seconds || b.year || 0) - Number(a.createdAt?.seconds || a.year || 0)).slice(0,12);
+      $('newSection').hidden = newest.length === 0;
+      if (newest.length) renderRow('newRow', newest, true);
+    }
+    function showHero(item, index=0) {
+      if (!item) return;
+      heroIndex = index;
+      const banner = item.banner || item.url || item.images?.banner || posterOf(item);
+      $('heroImage').style.backgroundImage = banner ? `url("${String(banner).replace(/["\\]/g,'')}")` : 'none';
+      $('heroTitle').textContent = item.title || 'Descubre Lumera';
+      $('heroDescription').textContent = synopsisOf(item) || `${prettyType(item)}${item.year ? ` · ${item.year}` : ''} · Una historia para disfrutar.`;
+      $('heroMeta').textContent = [item.year, item.ageRating != null ? `${item.ageRating}+` : '', item.type ? prettyType(item) : ''].filter(Boolean).join('  ·  ');
+      $('heroPlayBtn').onclick = () => { if (item.id) location.href = `details.html?id=${encodeURIComponent(item.id)}`; };
+      $('heroPagination').replaceChildren();
+      const count = Math.min(heroItems.length || 1, 5);
+      for (let i=0; i<count; i++) {
+        const dot = document.createElement('button'); dot.className = `hero-dot${i === index % count ? ' active' : ''}`; dot.setAttribute('aria-label', `Destacado ${i+1}`);
+        dot.onclick = () => showHero(heroItems[i], i); $('heroPagination').appendChild(dot);
+      }
+    }
+    function populateFilters() {
+      const categories = [...new Set(mediaItems.flatMap(item => Array.isArray(item.categories) ? item.categories : item.category ? [item.category] : []))].sort((a,b)=>String(a).localeCompare(String(b)));
+      const years = [...new Set(mediaItems.map(item => item.year).filter(Boolean))].sort((a,b)=>Number(b)-Number(a));
+      categories.forEach(value => $('categoryFilter').add(new Option(value, value)));
+      years.forEach(value => $('yearFilter').add(new Option(value, value)));
+    }
+    function updateSearch() {
+      const q = $('searchQuery').value.trim().toLocaleLowerCase(); const category = $('categoryFilter').value; const year = $('yearFilter').value; const maxAge = Number($('ageFilter').value || 999);
+      const matches = mediaItems.filter(item => (!profile?.isKids || inKids(item)) && (!q || String(item.title || '').toLocaleLowerCase().includes(q)) && (!category || (item.categories || [item.category]).filter(Boolean).includes(category)) && (!year || String(item.year) === year) && Number(item.ageRating ?? 0) <= maxAge);
+      $('searchResultCount').textContent = String(matches.length); const results = $('searchResults'); results.replaceChildren();
+      matches.slice(0,30).forEach(item => results.appendChild(makeCard(item, true)));
+      if (!matches.length) results.innerHTML = '<p class="search-empty">No encontramos títulos con esos filtros.</p>';
+    }
+    async function loadCatalog() {
+      $('catalogStatus').hidden = false;
+      try {
+        const [contentSnap, heroSnap] = await Promise.all([getDocs(collection(db, 'content')), getDocs(collection(db, 'hero_slides'))]);
+        mediaItems = contentSnap.docs.map(document => ({ id: document.id, ...document.data() }));
+        heroItems = heroSnap.docs.map(document => ({ id: document.id, ...document.data() })).filter(item => item.url || item.banner);
+        populateFilters();
+        const featuredMedia = mediaItems.filter(item => !profile?.isKids || inKids(item));
+        if (!heroItems.length) heroItems = featuredMedia.filter(item => item.images?.banner || posterOf(item));
+        showHero(heroItems[Math.floor(Math.random()*heroItems.length)] || featuredMedia[0]);
+        renderCatalog(); updateSearch();
+        if (!mediaItems.length) { $('catalogStatus').textContent = 'Catálogo conectado · aún no hay contenido publicado'; $('catalogStatus').hidden = false; }
+        if (heroItems.length > 1) setInterval(() => showHero(heroItems[(heroIndex + 1) % heroItems.length], (heroIndex + 1) % heroItems.length), 10000);
+      } catch (error) {
+        console.error('Lumera catalog load failed:', error);
+        $('catalogStatus').textContent = lang().error; $('catalogStatus').classList.add('status-error'); $('catalogStatus').hidden = false;
+        $('emptyState').hidden = false; $('mainCatalogRow').hidden = true; $('emptyTitle').textContent = 'No se pudo conectar'; $('emptyMessage').textContent = lang().error;
+      }
+    }
+
+    document.querySelectorAll('[data-filter]').forEach(button => button.addEventListener('click', () => { activeFilter = button.dataset.filter; renderCatalog(); window.scrollTo({top:0, behavior:'smooth'}); }));
+    const searchDialog = $('searchDialog'), settingsDialog = $('settingsDialog');
+    function openSearch() { searchDialog.showModal(); updateSearch(); setTimeout(() => $('searchQuery').focus(), 50); }
+    function openSettings() { settingsDialog.showModal(); }
+    $('searchOpen').onclick = $('mobileSearchOpen').onclick = openSearch;
+    $('settingsOpen').onclick = $('mobileSettingsOpen').onclick = openSettings;
+    $('adminOpen').onclick = () => location.href = 'admin.html';
+    ['searchQuery','categoryFilter','yearFilter','ageFilter'].forEach(id => $(id).addEventListener('input', updateSearch));
+    $('languageSelect').addEventListener('change', event => { localStorage.setItem('lumera_lang', event.target.value); location.reload(); });
+    $('accentPicker').addEventListener('input', event => { localStorage.setItem('lumera_accent_color', event.target.value); setTheme(event.target.value); });
+    [searchDialog, settingsDialog].forEach(dialog => dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); }));
     loadCatalog();
   </script>
 </body>
