@@ -7,97 +7,135 @@
   <link rel="icon" type="image/png" href="https://i.imgur.com/cCqp6Qt.png">
   <link rel="stylesheet" href="style.css">
   <style>
-    .admin-layout { padding: 30px; max-width: 900px; margin: 0 auto; }
-    .admin-nav { display: flex; gap: 20px; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 25px; }
-    .tab-btn { background: none; color: var(--text-muted); font-size: 16px; padding: 8px 16px; }
-    .tab-btn.active { color: var(--accent-color); font-weight: bold; border-bottom: 2px solid var(--accent-color); }
-    .form-card { background: var(--bg-card); padding: 25px; border-radius: 8px; margin-bottom: 20px; }
-    .input-field { width: 100%; padding: 10px; background: #222; border: 1px solid #444; color: #fff; margin: 8px 0 15px 0; border-radius: 4px; }
-    .link-contenido-panel { display: inline-block; background: var(--accent-color); color: #000; font-weight: bold; padding: 10px 20px; border-radius: 6px; margin-bottom: 20px; }
+    .admin-layout { padding: 30px; max-width: 1000px; margin: 80px auto; }
+    .items-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 15px; margin-top: 15px; }
+    .item-card { position: relative; border-radius: 8px; overflow: hidden; border: 1px solid #333; background: #111; }
+    .item-card img { width: 100%; height: 100px; object-fit: cover; }
+    .delete-btn { position: absolute; top: 5px; right: 5px; background: rgba(255,0,0,0.8); color: #fff; border: none; border-radius: 50%; width: 26px; height: 26px; cursor: pointer; font-weight: bold; }
   </style>
 </head>
 <body>
   <div class="bg-glow"></div>
 
+  <header class="top-header">
+    <div class="left-zone">
+      <img src="https://i.imgur.com/0QS9bH3.png" class="logo" alt="Lumera">
+      <span style="font-weight:bold; color:var(--accent-color);">Ajustes Globales</span>
+    </div>
+    <div class="right-zone">
+      <a href="admincontenido.html" class="hero-btn" style="padding:8px 16px; font-size:14px;">Ir a CMS Contenido 🎬</a>
+      <a href="auth.html" class="icon-btn" title="Volver"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M19 6.41L17.59 5 12 10.59 6.41 5 5 6.41 10.59 12 5 17.59 6.41 19 12 13.41 17.59 19 19 17.59 13.41 12z"/></svg></a>
+    </div>
+  </header>
+
   <div class="admin-layout">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-      <h1>Ajustes Generales</h1>
-      <a href="admincontenido.html" class="link-contenido-panel">Ir a CMS Contenido 🎬</a>
+    <!-- Pestaña 1: Hero Carousel -->
+    <div class="glass-panel" style="padding:20px; margin-bottom:25px;">
+      <h3>Gestor de Imágenes Hero</h3>
+      <div style="display:flex; gap:10px; margin-top:10px;">
+        <input type="url" id="heroUrl" placeholder="URL Imagen Imgur" style="flex:1; padding:10px; background:#111; border:1px solid #333; color:#fff;">
+        <button class="hero-btn" onclick="addHero()">Añadir</button>
+      </div>
+      <h4 style="margin-top:15px; color:var(--text-muted);">Imágenes Activas en Hero:</h4>
+      <div id="heroList" class="items-grid"></div>
     </div>
 
-    <div class="admin-nav">
-      <button class="tab-btn active" onclick="switchTab('hero')">Imágenes Hero</button>
-      <button class="tab-btn" onclick="switchTab('avatars')">Avatares</button>
-      <button class="tab-btn" onclick="switchTab('sparks')">Sparks</button>
+    <!-- Pestaña 2: Avatares -->
+    <div class="glass-panel" style="padding:20px; margin-bottom:25px;">
+      <h3>Gestor de Avatares de Perfil</h3>
+      <div style="display:flex; gap:10px; margin-top:10px;">
+        <input type="url" id="avatarUrl" placeholder="URL Imagen Avatar Imgur" style="flex:1; padding:10px; background:#111; border:1px solid #333; color:#fff;">
+        <button class="hero-btn" onclick="addAvatar()">Añadir</button>
+      </div>
+      <h4 style="margin-top:15px; color:var(--text-muted);">Avatares Disponibles:</h4>
+      <div id="avatarList" class="items-grid"></div>
     </div>
 
-    <!-- Sección Hero -->
-    <div id="sectionHero" class="form-card">
-      <h3>Añadir Imagen al Hero (Imgur)</h3>
-      <input type="url" id="heroUrlInput" class="input-field" placeholder="https://i.imgur.com/...">
-      <button class="hero-btn" onclick="saveHeroImage()">Guardar Imagen</button>
-    </div>
+    <!-- Pestaña 3: Sparks -->
+    <div class="glass-panel" style="padding:20px;">
+      <h3>Gestor de Sparks (Feed Vertical)</h3>
+      <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; margin-top:10px;">
+        <input type="text" id="sparkTitle" placeholder="Título / Nombre" style="padding:10px; background:#111; border:1px solid #333; color:#fff;">
+        <input type="text" id="sparkCat" placeholder="Categoría" style="padding:10px; background:#111; border:1px solid #333; color:#fff;">
+      </div>
+      <input type="url" id="sparkUrl" placeholder="URL Video MP4/WebArchive" style="width:100%; padding:10px; background:#111; border:1px solid #333; color:#fff; margin-top:10px;">
+      <button class="hero-btn" onclick="addSpark()" style="margin-top:10px; width:100%;">Subir Spark</button>
 
-    <!-- Sección Avatares -->
-    <div id="sectionAvatars" class="form-card" style="display:none;">
-      <h3>Añadir URL Avatar de Perfil</h3>
-      <input type="url" id="avatarUrlInput" class="input-field" placeholder="https://i.imgur.com/...">
-      <button class="hero-btn" onclick="saveAvatarImage()">Guardar Avatar</button>
-    </div>
-
-    <!-- Sección Sparks -->
-    <div id="sectionSparks" class="form-card" style="display:none;">
-      <h3>Añadir Nuevo Spark</h3>
-      <label>Título / Nombre</label>
-      <input type="text" id="sparkTitle" class="input-field">
-      <label>Categoría</label>
-      <input type="text" id="sparkCategory" class="input-field" placeholder="Ej: Anime, Trailers...">
-      <label>URL Video WebArchive/MP4</label>
-      <input type="url" id="sparkVideoUrl" class="input-field">
-      <button class="hero-btn" onclick="saveSpark()">Publicar Spark</button>
+      <h4 style="margin-top:15px; color:var(--text-muted);">Sparks Publicados:</h4>
+      <div id="sparkList" style="margin-top:10px;"></div>
     </div>
   </div>
 
   <script type="module">
     import { db } from './firebase.js';
-    import { collection, addDoc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+    import { collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 
-    window.switchTab = function(tab) {
-      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-      event.target.classList.add('active');
-      document.getElementById('sectionHero').style.display = tab === 'hero' ? 'block' : 'none';
-      document.getElementById('sectionAvatars').style.display = tab === 'avatars' ? 'block' : 'none';
-      document.getElementById('sectionSparks').style.display = tab === 'sparks' ? 'block' : 'none';
+    async function loadAllData() {
+      // Cargar Hero
+      const heroSnap = await getDocs(collection(db, "hero_slides"));
+      const heroList = document.getElementById('heroList');
+      heroList.innerHTML = '';
+      heroSnap.forEach(d => {
+        heroList.innerHTML += `
+          <div class="item-card">
+            <img src="${d.data().url}">
+            <button class="delete-btn" onclick="removeItem('hero_slides', '${d.id}')">✕</button>
+          </div>
+        `;
+      });
+
+      // Cargar Avatares
+      const avatarSnap = await getDocs(collection(db, "avatars"));
+      const avatarList = document.getElementById('avatarList');
+      avatarList.innerHTML = '';
+      avatarSnap.forEach(d => {
+        avatarList.innerHTML += `
+          <div class="item-card">
+            <img src="${d.data().url}" style="border-radius:50%;">
+            <button class="delete-btn" onclick="removeItem('avatars', '${d.id}')">✕</button>
+          </div>
+        `;
+      });
+
+      // Cargar Sparks
+      const sparkSnap = await getDocs(collection(db, "sparks"));
+      const sparkList = document.getElementById('sparkList');
+      sparkList.innerHTML = '';
+      sparkSnap.forEach(d => {
+        sparkList.innerHTML += `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:#111; padding:10px; margin-bottom:5px; border-radius:4px;">
+            <span><strong>${d.data().name}</strong> (${d.data().category})</span>
+            <button onclick="removeItem('sparks', '${d.id}')" style="background:red; color:#fff; border:none; padding:4px 8px; border-radius:4px; cursor:pointer;">Eliminar</button>
+          </div>
+        `;
+      });
+    }
+
+    window.addHero = async function() {
+      const url = document.getElementById('heroUrl').value.trim();
+      if (url) { await addDoc(collection(db, "hero_slides"), { url }); loadAllData(); }
     };
 
-    window.saveHeroImage = async function() {
-      const url = document.getElementById('heroUrlInput').value.trim();
-      if (!url) return alert("Ingresa una URL válida");
-      await addDoc(collection(db, "hero_slides"), { url });
-      alert("Imagen de Hero guardada");
-      document.getElementById('heroUrlInput').value = '';
+    window.addAvatar = async function() {
+      const url = document.getElementById('avatarUrl').value.trim();
+      if (url) { await addDoc(collection(db, "avatars"), { url }); loadAllData(); }
     };
 
-    window.saveAvatarImage = async function() {
-      const url = document.getElementById('avatarUrlInput').value.trim();
-      if (!url) return alert("Ingresa una URL válida");
-      await addDoc(collection(db, "avatars"), { url });
-      alert("Avatar guardado");
-      document.getElementById('avatarUrlInput').value = '';
-    };
-
-    window.saveSpark = async function() {
+    window.addSpark = async function() {
       const name = document.getElementById('sparkTitle').value.trim();
-      const category = document.getElementById('sparkCategory').value.trim();
-      const videoUrl = document.getElementById('sparkVideoUrl').value.trim();
-
-      if (!name || !videoUrl) return alert("Por favor llena los campos requeridos");
-
-      await addDoc(collection(db, "sparks"), { name, category, videoUrl });
-      alert("Spark subido con éxito");
-      document.getElementById('sparkTitle').value = '';
-      document.getElementById('sparkVideoUrl').value = '';
+      const category = document.getElementById('sparkCat').value.trim();
+      const videoUrl = document.getElementById('sparkUrl').value.trim();
+      if (name && videoUrl) { await addDoc(collection(db, "sparks"), { name, category, videoUrl }); loadAllData(); }
     };
+
+    window.removeItem = async function(coll, id) {
+      if (confirm("¿Seguro que deseas eliminar este elemento?")) {
+        await deleteDoc(doc(db, coll, id));
+        loadAllData();
+      }
+    };
+
+    loadAllData();
   </script>
 </body>
 </html>
