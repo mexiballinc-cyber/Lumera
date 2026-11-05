@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lumera - Panel Ajustes</title>
+  <link rel="icon" type="image/png" href="https://i.imgur.com/cCqp6Qt.png">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .admin-layout { padding: 30px; max-width: 900px; margin: 0 auto; }
+    .admin-nav { display: flex; gap: 20px; border-bottom: 1px solid #333; padding-bottom: 15px; margin-bottom: 25px; }
+    .tab-btn { background: none; color: var(--text-muted); font-size: 16px; padding: 8px 16px; }
+    .tab-btn.active { color: var(--accent-color); font-weight: bold; border-bottom: 2px solid var(--accent-color); }
+    .form-card { background: var(--bg-card); padding: 25px; border-radius: 8px; margin-bottom: 20px; }
+    .input-field { width: 100%; padding: 10px; background: #222; border: 1px solid #444; color: #fff; margin: 8px 0 15px 0; border-radius: 4px; }
+    .link-contenido-panel { display: inline-block; background: var(--accent-color); color: #000; font-weight: bold; padding: 10px 20px; border-radius: 6px; margin-bottom: 20px; }
+  </style>
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <div class="admin-layout">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+      <h1>Ajustes Generales</h1>
+      <a href="admincontenido.html" class="link-contenido-panel">Ir a CMS Contenido 🎬</a>
+    </div>
+
+    <div class="admin-nav">
+      <button class="tab-btn active" onclick="switchTab('hero')">Imágenes Hero</button>
+      <button class="tab-btn" onclick="switchTab('avatars')">Avatares</button>
+      <button class="tab-btn" onclick="switchTab('sparks')">Sparks</button>
+    </div>
+
+    <!-- Sección Hero -->
+    <div id="sectionHero" class="form-card">
+      <h3>Añadir Imagen al Hero (Imgur)</h3>
+      <input type="url" id="heroUrlInput" class="input-field" placeholder="https://i.imgur.com/...">
+      <button class="hero-btn" onclick="saveHeroImage()">Guardar Imagen</button>
+    </div>
+
+    <!-- Sección Avatares -->
+    <div id="sectionAvatars" class="form-card" style="display:none;">
+      <h3>Añadir URL Avatar de Perfil</h3>
+      <input type="url" id="avatarUrlInput" class="input-field" placeholder="https://i.imgur.com/...">
+      <button class="hero-btn" onclick="saveAvatarImage()">Guardar Avatar</button>
+    </div>
+
+    <!-- Sección Sparks -->
+    <div id="sectionSparks" class="form-card" style="display:none;">
+      <h3>Añadir Nuevo Spark</h3>
+      <label>Título / Nombre</label>
+      <input type="text" id="sparkTitle" class="input-field">
+      <label>Categoría</label>
+      <input type="text" id="sparkCategory" class="input-field" placeholder="Ej: Anime, Trailers...">
+      <label>URL Video WebArchive/MP4</label>
+      <input type="url" id="sparkVideoUrl" class="input-field">
+      <button class="hero-btn" onclick="saveSpark()">Publicar Spark</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db } from './firebase.js';
+    import { collection, addDoc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+
+    window.switchTab = function(tab) {
+      document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+      event.target.classList.add('active');
+      document.getElementById('sectionHero').style.display = tab === 'hero' ? 'block' : 'none';
+      document.getElementById('sectionAvatars').style.display = tab === 'avatars' ? 'block' : 'none';
+      document.getElementById('sectionSparks').style.display = tab === 'sparks' ? 'block' : 'none';
+    };
+
+    window.saveHeroImage = async function() {
+      const url = document.getElementById('heroUrlInput').value.trim();
+      if (!url) return alert("Ingresa una URL válida");
+      await addDoc(collection(db, "hero_slides"), { url });
+      alert("Imagen de Hero guardada");
+      document.getElementById('heroUrlInput').value = '';
+    };
+
+    window.saveAvatarImage = async function() {
+      const url = document.getElementById('avatarUrlInput').value.trim();
+      if (!url) return alert("Ingresa una URL válida");
+      await addDoc(collection(db, "avatars"), { url });
+      alert("Avatar guardado");
+      document.getElementById('avatarUrlInput').value = '';
+    };
+
+    window.saveSpark = async function() {
+      const name = document.getElementById('sparkTitle').value.trim();
+      const category = document.getElementById('sparkCategory').value.trim();
+      const videoUrl = document.getElementById('sparkVideoUrl').value.trim();
+
+      if (!name || !videoUrl) return alert("Por favor llena los campos requeridos");
+
+      await addDoc(collection(db, "sparks"), { name, category, videoUrl });
+      alert("Spark subido con éxito");
+      document.getElementById('sparkTitle').value = '';
+      document.getElementById('sparkVideoUrl').value = '';
+    };
+  </script>
+</body>
+</html>
