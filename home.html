@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lumera - Inicio</title>
+  <link rel="icon" type="image/png" href="https://i.imgur.com/cCqp6Qt.png">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .navbar {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 15px 40px;
+      position: fixed;
+      top: 0; width: 100%;
+      z-index: 100;
+      background: linear-gradient(180deg, rgba(0,0,0,0.8) 0%, transparent 100%);
+    }
+    .nav-left { display: flex; align-items: center; gap: 30px; }
+    .nav-logo { height: 35px; }
+    .nav-links { display: flex; gap: 20px; list-style: none; }
+    .nav-item { cursor: pointer; font-size: 15px; color: var(--text-muted); transition: color 0.2s; }
+    .nav-item.active, .nav-item:hover { color: #fff; font-weight: 600; }
+    
+    /* Hero Dinámico */
+    .hero {
+      height: 70vh;
+      position: relative;
+      background-size: cover;
+      background-position: center;
+      display: flex;
+      align-items: flex-end;
+      padding: 60px 40px;
+    }
+    .hero-overlay {
+      position: absolute; inset: 0;
+      background: linear-gradient(0deg, var(--bg-primary) 0%, rgba(8,8,8,0.4) 50%, transparent 100%);
+    }
+    .hero-content { position: relative; z-index: 2; max-width: 600px; }
+    .hero-title { font-size: 3rem; margin-bottom: 10px; font-weight: 800; }
+    .hero-btn {
+      padding: 12px 24px;
+      background: var(--accent-color);
+      color: #000;
+      font-weight: bold;
+      border-radius: 6px;
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+    }
+
+    /* Filas de Contenido */
+    .content-section { padding: 20px 40px; }
+    .row-title { font-size: 1.4rem; margin-bottom: 15px; }
+    .media-row {
+      display: flex;
+      gap: 15px;
+      overflow-x: auto;
+      padding-bottom: 15px;
+      scroll-behavior: smooth;
+    }
+    .media-row::-webkit-scrollbar { height: 6px; }
+    .media-row::-webkit-scrollbar-thumb { background: #333; border-radius: 4px; }
+    .card-poster {
+      min-width: 180px;
+      height: 260px;
+      border-radius: 6px;
+      object-fit: cover;
+      cursor: pointer;
+      transition: transform 0.2s;
+    }
+    .card-poster:hover { transform: scale(1.05); }
+  </style>
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <!-- Navbar Navigation -->
+  <nav class="navbar">
+    <div class="nav-left">
+      <img src="https://i.imgur.com/0QS9bH3.png" class="nav-logo" alt="Lumera">
+      <ul class="nav-links">
+        <li class="nav-item active" data-filter="all" data-i18n="home">Inicio</li>
+        <li class="nav-item" data-filter="movie" data-i18n="movies">Películas</li>
+        <li class="nav-item" data-filter="series" data-i18n="series">Series</li>
+        <li class="nav-item" data-filter="kids" data-i18n="kids">Niños</li>
+      </ul>
+    </div>
+    <div style="display:flex; gap:15px; align-items:center;">
+      <a href="spark.html" style="color:var(--accent-color); font-weight:bold;">Sparks⚡</a>
+      <img id="navAvatar" src="" style="width:36px; height:36px; border-radius:4px; cursor:pointer;" onclick="window.location.href='auth.html'">
+    </div>
+  </nav>
+
+  <!-- Hero Slider Dinámico -->
+  <header id="mainHero" class="hero">
+    <div class="hero-overlay"></div>
+    <div class="hero-content">
+      <h1 id="heroTitle" class="hero-title">Cargando...</h1>
+      <button id="heroPlayBtn" class="hero-btn">
+        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+        <span data-i18n="play">Reproducir</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- Filas Filtradas -->
+  <section class="content-section">
+    <h2 class="row-title">Continuar Viendo</h2>
+    <div id="continueWatchingRow" class="media-row"></div>
+  </section>
+
+  <section class="content-section">
+    <h2 id="sectionTitle" class="row-title">Catálogo Principal</h2>
+    <div id="mainCatalogRow" class="media-row"></div>
+  </section>
+
+  <script type="module">
+    import { db } from './firebase.js';
+    import { collection, getDocs } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+
+    const activeProfile = JSON.parse(localStorage.getItem('lumera_active_profile') || '{}');
+    document.getElementById('navAvatar').src = activeProfile.avatar || 'https://i.imgur.com/cCqp6Qt.png';
+
+    let allMedia = [];
+
+    async function loadCatalog() {
+      const querySnapshot = await getDocs(collection(db, "content"));
+      allMedia = [];
+      querySnapshot.forEach((doc) => {
+        allMedia.push({ id: doc.id, ...doc.data() });
+      });
+
+      renderFilter('all');
+      setupHeroSlider();
+    }
+
+    function renderFilter(filterType) {
+      const container = document.getElementById('mainCatalogRow');
+      container.innerHTML = '';
+
+      let filtered = allMedia;
+
+      // Filtrado automático para el perfil Kids (ageRating <= 10)
+      if (activeProfile.isKids || filterType === 'kids') {
+        filtered = filtered.filter(item => item.ageRating <= 10);
+      } else if (filterType !== 'all') {
+        filtered = filtered.filter(item => item.type === filterType);
+      }
+
+      filtered.forEach(item => {
+        const img = document.createElement('img');
+        img.src = item.images?.poster || 'https://via.placeholder.com/180x260';
+        img.className = 'card-poster';
+        img.onclick = () => window.location.href = `details.html?id=${item.id}`;
+        container.appendChild(img);
+      });
+    }
+
+    // Configuración básica del slider Hero
+    function setupHeroSlider() {
+      if (allMedia.length === 0) return;
+      const featured = allMedia[0];
+      document.getElementById('mainHero').style.backgroundImage = `url('${featured.images?.banner}')`;
+      document.getElementById('heroTitle').textContent = featured.title;
+      document.getElementById('heroPlayBtn').onclick = () => window.location.href = `details.html?id=${featured.id}`;
+    }
+
+    // Tab Listeners
+    document.querySelectorAll('.nav-item').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        document.querySelectorAll('.nav-item').forEach(i => i.classList.remove('active'));
+        e.target.classList.add('active');
+        renderFilter(e.target.getAttribute('data-filter'));
+      });
+    });
+
+    loadCatalog();
+  </script>
+</body>
+</html>
