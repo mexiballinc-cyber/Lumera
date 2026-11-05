@@ -3,150 +3,242 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lumera CMS - Contenido</title>
+  <title>Lumera CMS - Administrador de Contenido</title>
   <link rel="icon" type="image/png" href="https://i.imgur.com/cCqp6Qt.png">
   <link rel="stylesheet" href="style.css">
   <style>
-    .cms-container { max-width: 1000px; margin: 40px auto; padding: 20px; }
-    .cms-card { background: var(--bg-card); padding: 30px; border-radius: 8px; margin-bottom: 25px; }
+    .cms-layout { max-width: 1100px; margin: 80px auto 40px; padding: 20px; }
     .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
-    .input-box { width: 100%; padding: 10px; background: #222; border: 1px solid #444; color: #fff; margin-top: 5px; margin-bottom: 15px; border-radius: 4px; }
-    .lang-block { border: 1px solid #333; padding: 15px; border-radius: 6px; margin-top: 10px; background: #141414; }
+    .grid-4 { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
+    .input-box { width: 100%; padding: 10px; background: #111; border: 1px solid #333; color: #fff; border-radius: 4px; margin-top: 5px; }
+    .season-block { border: 1px solid var(--glass-border); padding: 15px; border-radius: 8px; margin-top: 15px; background: rgba(0,0,0,0.4); }
   </style>
 </head>
 <body>
   <div class="bg-glow"></div>
 
-  <div class="cms-container">
-    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
-      <h1>CMS de Contenido Multimedia 🎬</h1>
-      <a href="admin.html" style="color:var(--accent-color);">← Volver a Ajustes</a>
+  <header class="top-header">
+    <div class="left-zone">
+      <img src="https://i.imgur.com/0QS9bH3.png" class="logo" alt="Lumera">
+      <span style="font-weight:bold; color:var(--accent-color);">CMS Películas y Series</span>
     </div>
+    <div class="right-zone">
+      <a href="admin.html" style="color:var(--text-muted);">← Volver a Ajustes</a>
+    </div>
+  </header>
 
-    <div class="cms-card">
+  <div class="cms-layout">
+    <!-- Formulario de Publicación -->
+    <div class="glass-panel" style="padding:30px; margin-bottom:30px;">
       <h2>Publicar Nuevo Contenido</h2>
       
-      <div class="grid-2">
+      <div class="grid-2" style="margin-top:15px;">
         <div>
-          <label>Título Principal</label>
-          <input type="text" id="contentTitle" class="input-box">
+          <label>Título del Contenido</label>
+          <input type="text" id="title" class="input-box">
         </div>
         <div>
           <label>Tipo de Contenido</label>
-          <select id="contentType" class="input-box">
+          <select id="type" class="input-box" onchange="toggleSeriesBuilder(this.value)">
             <option value="movie">Película</option>
             <option value="series">Serie</option>
           </select>
         </div>
       </div>
 
-      <div class="grid-2">
+      <div class="grid-2" style="margin-top:10px;">
         <div>
           <label>Año de Estreno</label>
-          <input type="number" id="contentYear" class="input-box" value="2026">
+          <input type="number" id="year" class="input-box" value="2026">
         </div>
         <div>
-          <label>Clasificación de Edad (Si es >10 se oculta en Kids)</label>
-          <input type="number" id="contentAge" class="input-box" placeholder="Ej: 7, 13, 18">
+          <label>Clasificación de Edad (>10 se oculta en Kids)</label>
+          <input type="number" id="ageRating" class="input-box" placeholder="Ej: 7, 13, 18">
         </div>
       </div>
 
-      <div class="grid-2">
+      <div class="grid-2" style="margin-top:10px;">
         <div>
-          <label>URL Portada Poster (Imgur)</label>
-          <input type="url" id="posterUrl" class="input-box">
+          <label>URL Poster (Imgur)</label>
+          <input type="url" id="poster" class="input-box">
         </div>
         <div>
           <label>URL Banner Fondo (Imgur)</label>
-          <input type="url" id="bannerUrl" class="input-box">
+          <input type="url" id="banner" class="input-box">
         </div>
       </div>
 
-      <h3>Descripciones i18n (4 Idiomas)</h3>
-      <div class="lang-block">
-        <label>Español (ES)</label>
-        <textarea id="synopsis_es" class="input-box" rows="2"></textarea>
-
-        <label>Inglés (EN)</label>
-        <textarea id="synopsis_en" class="input-box" rows="2"></textarea>
-
-        <label>Portugués (PT)</label>
-        <textarea id="synopsis_pt" class="input-box" rows="2"></textarea>
-
-        <label>Francés (FR)</label>
-        <textarea id="synopsis_fr" class="input-box" rows="2"></textarea>
-      </div>
-
-      <h3 style="margin-top:20px;">Fuentes de Video & Subtítulos (WebArchive)</h3>
-      <div class="lang-block">
-        <div class="grid-2">
-          <div>
-            <label>Link Audio Español</label>
-            <input type="url" id="audio_es" class="input-box">
-          </div>
-          <div>
-            <label>Link Audio Inglés</label>
-            <input type="url" id="audio_en" class="input-box">
-          </div>
+      <!-- Descripciones i18n -->
+      <h3 style="margin-top:20px;">Sinopsis e Información (4 Idiomas)</h3>
+      <div class="grid-2" style="margin-top:10px;">
+        <div>
+          <label>Español (ES)</label>
+          <textarea id="synopsis_es" class="input-box" rows="2"></textarea>
         </div>
-        <div class="grid-2">
-          <div>
-            <label>Link Audio Portugués</label>
-            <input type="url" id="audio_pt" class="input-box">
-          </div>
-          <div>
-            <label>Link Audio Francés</label>
-            <input type="url" id="audio_fr" class="input-box">
-          </div>
+        <div>
+          <label>Inglés (EN)</label>
+          <textarea id="synopsis_en" class="input-box" rows="2"></textarea>
+        </div>
+        <div>
+          <label>Portugués (PT)</label>
+          <textarea id="synopsis_pt" class="input-box" rows="2"></textarea>
+        </div>
+        <div>
+          <label>Francés (FR)</label>
+          <textarea id="synopsis_fr" class="input-box" rows="2"></textarea>
         </div>
       </div>
 
-      <button class="hero-btn" onclick="saveContent()" style="margin-top:20px; width:100%; padding:14px; font-size:16px;">Guardar y Publicar en Firebase</button>
+      <!-- Sección si es Película -->
+      <div id="movieSection">
+        <h3 style="margin-top:20px;">Fuentes de Video para Película</h3>
+        <div class="grid-2" style="margin-top:10px;">
+          <input type="url" id="m_es" class="input-box" placeholder="URL Audio/Video Español">
+          <input type="url" id="m_en" class="input-box" placeholder="URL Audio/Video Inglés">
+          <input type="url" id="m_pt" class="input-box" placeholder="URL Audio/Video Portugués">
+          <input type="url" id="m_fr" class="input-box" placeholder="URL Audio/Video Francés">
+        </div>
+      </div>
+
+      <!-- Gestor de Temporadas si es Serie -->
+      <div id="seriesSection" style="display:none; margin-top:20px;">
+        <h3>Gestor de Temporadas y Episodios</h3>
+        <button class="hero-btn" onclick="addSeasonField()" style="margin-top:10px; font-size:13px; padding:6px 12px;">+ Agregar Temporada</button>
+        <div id="seasonsContainer"></div>
+      </div>
+
+      <button class="hero-btn" onclick="publishMedia()" style="width:100%; margin-top:25px; padding:12px; font-size:16px;">Guardar y Publicar en Firebase</button>
+    </div>
+
+    <!-- Lista de Contenidos Existentes -->
+    <div class="glass-panel" style="padding:25px;">
+      <h3>Catálogo Actual en Firebase</h3>
+      <div id="publishedContentList" style="margin-top:15px;"></div>
     </div>
   </div>
 
   <script type="module">
     import { db } from './firebase.js';
-    import { collection, addDoc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+    import { collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 
-    window.saveContent = async function() {
-      const title = document.getElementById('contentTitle').value.trim();
-      const type = document.getElementById('contentType').value;
-      const year = parseInt(document.getElementById('contentYear').value);
-      const ageRating = parseInt(document.getElementById('contentAge').value || '0');
-      const poster = document.getElementById('posterUrl').value.trim();
-      const banner = document.getElementById('bannerUrl').value.trim();
+    let seasonCount = 0;
 
-      if (!title || !poster) return alert("El título y el poster son obligatorios");
+    window.toggleSeriesBuilder = function(val) {
+      document.getElementById('movieSection').style.display = val === 'movie' ? 'block' : 'none';
+      document.getElementById('seriesSection').style.display = val === 'series' ? 'block' : 'none';
+    };
 
-      const mediaData = {
-        title,
-        type,
-        year,
-        ageRating,
+    window.addSeasonField = function() {
+      seasonCount++;
+      const container = document.getElementById('seasonsContainer');
+      const sDiv = document.createElement('div');
+      sDiv.className = 'season-block';
+      sDiv.id = `season_${seasonCount}`;
+      sDiv.innerHTML = `
+        <h4>Temporada ${seasonCount}</h4>
+        <input type="text" placeholder="Nombre Temporada" class="input-box season-title">
+        <div class="episodes-container" style="margin-top:10px;"></div>
+        <button onclick="addEpisodeField(${seasonCount})" style="background:#222; color:#fff; border:1px solid #444; padding:6px 12px; border-radius:4px; margin-top:10px; cursor:pointer;">+ Agregar Episodio</button>
+      `;
+      container.appendChild(sDiv);
+    };
+
+    window.addEpisodeField = function(sId) {
+      const sDiv = document.getElementById(`season_${sId}`);
+      const epContainer = sDiv.querySelector('.episodes-container');
+      const epDiv = document.createElement('div');
+      epDiv.style.cssText = "background:#111; padding:10px; margin-top:8px; border-radius:4px;";
+      epDiv.className = "ep-item";
+      epDiv.innerHTML = `
+        <input type="text" placeholder="Título Episodio" class="input-box ep-title">
+        <div class="grid-2" style="margin-top:5px;">
+          <input type="url" placeholder="URL Video ES" class="input-box ep-es">
+          <input type="url" placeholder="URL Video EN" class="input-box ep-en">
+        </div>
+      `;
+      epContainer.appendChild(epDiv);
+    };
+
+    window.publishMedia = async function() {
+      const title = document.getElementById('title').value.trim();
+      const type = document.getElementById('type').value;
+      const year = parseInt(document.getElementById('year').value);
+      const ageRating = parseInt(document.getElementById('ageRating').value || '0');
+      const poster = document.getElementById('poster').value.trim();
+      const banner = document.getElementById('banner').value.trim();
+
+      if (!title || !poster) return alert("Ingresa el título y la URL del poster.");
+
+      const payload = {
+        title, type, year, ageRating,
         images: { poster, banner },
         i18n: {
           es: { synopsis: document.getElementById('synopsis_es').value },
           en: { synopsis: document.getElementById('synopsis_en').value },
           pt: { synopsis: document.getElementById('synopsis_pt').value },
           fr: { synopsis: document.getElementById('synopsis_fr').value }
-        },
-        sources: {
-          es: document.getElementById('audio_es').value.trim(),
-          en: document.getElementById('audio_en').value.trim(),
-          pt: document.getElementById('audio_pt').value.trim(),
-          fr: document.getElementById('audio_fr').value.trim()
         }
       };
 
-      try {
-        await addDoc(collection(db, "content"), mediaData);
-        alert("Contenido registrado con éxito en Firebase");
-        window.location.reload();
-      } catch (err) {
-        alert("Error al guardar: " + err.message);
+      if (type === 'movie') {
+        payload.sources = {
+          es: document.getElementById('m_es').value.trim(),
+          en: document.getElementById('m_en').value.trim(),
+          pt: document.getElementById('m_pt').value.trim(),
+          fr: document.getElementById('m_fr').value.trim()
+        };
+      } else {
+        payload.seasons = [];
+        document.querySelectorAll('.season-block').forEach((sBlock, idx) => {
+          const sTitle = sBlock.querySelector('.season-title').value || `Temporada ${idx+1}`;
+          const episodes = [];
+          sBlock.querySelectorAll('.ep-item').forEach((epEl, epIdx) => {
+            episodes.push({
+              episodeNumber: epIdx + 1,
+              title: epEl.querySelector('.ep-title').value || `Episodio ${epIdx+1}`,
+              sources: {
+                es: epEl.querySelector('.ep-es').value,
+                en: epEl.querySelector('.ep-en').value
+              }
+            });
+          });
+          payload.seasons.push({ seasonNumber: idx + 1, title: sTitle, episodes });
+        });
+      }
+
+      await addDoc(collection(db, "content"), payload);
+      alert("Contenido publicado con éxito.");
+      loadCatalog();
+    };
+
+    async function loadCatalog() {
+      const snap = await getDocs(collection(db, "content"));
+      const list = document.getElementById('publishedContentList');
+      list.innerHTML = '';
+      snap.forEach(d => {
+        const item = d.data();
+        list.innerHTML += `
+          <div style="display:flex; justify-content:space-between; align-items:center; background:#111; padding:10px; margin-bottom:8px; border-radius:6px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+              <img src="${item.images?.poster}" style="width:40px; height:55px; object-fit:cover; border-radius:4px;">
+              <div>
+                <strong>${item.title}</strong> (${item.type === 'movie' ? 'Película' : 'Serie'}) - ${item.year}
+              </div>
+            </div>
+            <button onclick="deleteMedia('${d.id}')" style="background:red; color:#fff; border:none; padding:6px 12px; border-radius:4px; cursor:pointer;">Eliminar</button>
+          </div>
+        `;
+      });
+    }
+
+    window.deleteMedia = async function(id) {
+      if (confirm("¿Seguro que deseas eliminar este contenido?")) {
+        await deleteDoc(doc(db, "content", id));
+        loadCatalog();
       }
     };
+
+    loadCatalog();
   </script>
 </body>
 </html>
