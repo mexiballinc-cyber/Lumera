@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lumera - Detalles</title>
+  <link rel="icon" type="image/png" href="https://i.imgur.com/cCqp6Qt.png">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .details-hero {
+      height: 60vh;
+      background-size: cover;
+      background-position: center;
+      position: relative;
+      display: flex;
+      align-items: flex-end;
+      padding: 40px;
+    }
+    .details-content { max-width: 700px; z-index: 2; }
+    .meta-tags { display: flex; gap: 15px; margin: 15px 0; color: var(--text-muted); }
+    .episodes-list { padding: 30px 40px; }
+    .episode-card {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 15px;
+      background: var(--bg-card);
+      margin-bottom: 10px;
+      border-radius: 6px;
+      cursor: pointer;
+    }
+    .episode-card:hover { border: 1px solid var(--accent-color); }
+  </style>
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <header id="detailsHero" class="details-hero">
+    <div class="hero-overlay"></div>
+    <div class="details-content">
+      <h1 id="mediaTitle" style="font-size: 3rem;">---</h1>
+      <div class="meta-tags">
+        <span id="mediaYear">2026</span>
+        <span id="mediaAge" style="border:1px solid #777; padding:0 4px;">13+</span>
+        <span id="mediaType">Serie</span>
+      </div>
+      <p id="mediaSynopsis" style="line-height: 1.6; color: #ccc; margin-bottom: 20px;"></p>
+      <button id="mainPlayBtn" class="hero-btn" style="padding:14px 28px; font-size:16px;">
+        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Reproducir
+      </button>
+    </div>
+  </header>
+
+  <section class="episodes-list">
+    <h2 id="episodesHeading" style="margin-bottom: 20px;">Episodios</h2>
+    <div id="episodesContainer"></div>
+  </section>
+
+  <script type="module" src="details.js"></script>
+</body>
+</html>
