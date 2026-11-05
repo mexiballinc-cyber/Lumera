@@ -1,111 +1,131 @@
 import { auth, db } from './firebase.js';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
-import { doc, getDoc, setDoc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js";
+import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 
-// Correo oficial del único administrador
 const ADMIN_EMAIL = "jgonzalezgutierrez1@bcedu.mx";
+let currentUser = null;
+let selectedAvatarUrl = "https://i.imgur.com/cCqp6Qt.png";
 
 const authFormSection = document.getElementById('authFormSection');
 const profilesSection = document.getElementById('profilesSection');
-const authTitle = document.getElementById('authTitle');
-const authEmail = document.getElementById('authEmail');
-const authPassword = document.getElementById('authPassword');
-const authSubmitBtn = document.getElementById('authSubmitBtn');
-const authToggle = document.getElementById('authToggle');
 const profilesGrid = document.getElementById('profilesGrid');
+const headerAdminBtn = document.getElementById('headerAdminBtn');
 
-let isLoginMode = true;
-
-// Alternar entre Login y Registro
-authToggle.addEventListener('click', () => {
-  isLoginMode = !isLoginMode;
-  authTitle.textContent = isLoginMode ? "Iniciar Sesión" : "Crear Cuenta";
-  authSubmitBtn.textContent = isLoginMode ? "Entrar" : "Registrarse";
-  authToggle.textContent = isLoginMode ? "¿No tienes cuenta? Regístrate aquí" : "¿Ya tienes cuenta? Inicia sesión";
-});
-
-// Manejar Autenticación (Login / Registro)
-authSubmitBtn.addEventListener('click', async () => {
-  const email = authEmail.value.trim();
-  const password = authPassword.value.trim();
-
-  if (!email || !password) return alert("Por favor llena todos los campos");
-
-  try {
-    if (isLoginMode) {
-      await signInWithEmailAndPassword(auth, email, password);
-    } else {
-      const userCred = await createUserWithEmailAndPassword(auth, email, password);
-      
-      const isAdmin = (email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
-
-      // Crear el documento del usuario en Firestore guardando su rol
-      await setDoc(doc(db, "users", userCred.user.uid), {
-        email: email,
-        role: isAdmin ? "admin" : "user",
-        profiles: [{ name: "Principal", avatar: "https://i.imgur.com/cCqp6Qt.png", isKids: false }]
-      });
-    }
-  } catch (err) {
-    alert("Error de autenticación: " + err.message);
-  }
-});
-
-// Listener de sesión activa
+// Cargar estado de sesión
 onAuthStateChanged(auth, async (user) => {
   if (user) {
+    currentUser = user;
     localStorage.setItem('lumera_session', user.uid);
     authFormSection.style.display = 'none';
     profilesSection.style.display = 'block';
-    await loadProfiles(user);
+
+    if (user.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
+      headerAdminBtn.style.display = 'flex';
+    }
+
+    await loadUserProfiles();
   } else {
     localStorage.removeItem('lumera_session');
     authFormSection.style.display = 'block';
     profilesSection.style.display = 'none';
+    headerAdminBtn.style.display = 'none';
   }
 });
 
-// Cargar lista de perfiles y habilitar botón de lápiz Admin si el correo coincide
-async function loadProfiles(user) {
+// Renderizar lista de perfiles guardados + Botón "+" Añadir
+async function loadUserProfiles() {
   profilesGrid.innerHTML = '';
-  const userDocRef = doc(db, "users", user.uid);
-  const userSnap = await getDoc(userDocRef);
+  const userRef = doc(db, "users", currentUser.uid);
+  const userSnap = await getDoc(userRef);
 
-  let profiles = [{ name: "Principal", avatar: "https://i.imgur.com/cCqp6Qt.png", isKids: false }];
+  let profiles = [];
   if (userSnap.exists() && userSnap.data().profiles) {
     profiles = userSnap.data().profiles;
+  } else {
+    profiles = [{ name: "Principal", avatar: "https://i.imgur.com/cCqp6Qt.png", isKids: false }];
+    await setDoc(userRef, { email: currentUser.email, profiles }, { merge: true });
   }
 
-  // Renderizar Tarjetas de Perfil normales para todos los usuarios
-  profiles.forEach((prof) => {
+  // Tarjetas de perfil existentes
+  profiles.forEach(prof => {
     const card = document.createElement('div');
     card.className = 'profile-card';
     card.innerHTML = `
       <img src="${prof.avatar}" class="profile-avatar">
       <div class="profile-name">${prof.name}</div>
     `;
-    card.onclick = () => selectProfile(prof);
+    card.onclick = () => {
+      localStorage.setItem('lumera_active_profile', JSON.stringify(prof));
+      window.location.href = 'home.html';
+    };
     profilesGrid.appendChild(card);
   });
 
-  // FILTRO DE SEGURIDAD: Solo se renderiza el botón de lápiz si el usuario es el correo admin
-  if (user.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase()) {
-    const adminBtn = document.createElement('div');
-    adminBtn.className = 'profile-card';
-    adminBtn.innerHTML = `
-      <div class="profile-avatar" style="background:#1a1a1a; display:flex; align-items:center; justify-content:center; border: 2px dashed var(--accent-color);">
-        <svg class="icon-svg" viewBox="0 0 24 24" style="width:36px; height:36px; fill:var(--accent-color);">
-          <path d="M3 17.25V21h3.75L17.81 9.94l-3.75-3.75L3 17.25zM20.71 7.04c.39-.39.39-1.02 0-1.41l-2.34-2.34c-.39-.39-1.02-.39-1.41 0l-1.83 1.83 3.75 3.75 1.83-1.83z"/>
-        </svg>
-      </div>
-      <div class="profile-name" style="color:var(--accent-color); font-weight:bold;">Panel Admin ✏️</div>
-    `;
-    adminBtn.onclick = () => window.location.href = 'admin.html';
-    profilesGrid.appendChild(adminBtn);
-  }
+  // Botón (+) Añadir Perfil
+  const addCard = document.createElement('div');
+  addCard.className = 'profile-card';
+  addCard.innerHTML = `
+    <div class="add-profile-circle">+</div>
+    <div class="profile-name">Añadir</div>
+  `;
+  addCard.onclick = () => openAddProfileModal();
+  profilesGrid.appendChild(addCard);
 }
 
-function selectProfile(profile) {
-  localStorage.setItem('lumera_active_profile', JSON.stringify(profile));
-  window.location.href = 'home.html';
-}
+// Ventana Modal para Añadir Perfil
+window.openAddProfileModal = async function() {
+  document.getElementById('addProfileModal').style.display = 'flex';
+  const container = document.getElementById('avatarPickerContainer');
+  container.innerHTML = 'Cargando avatares...';
+
+  // Obtener avatares subidos por el Admin desde Firestore
+  const querySnap = await getDocs(collection(db, "avatars"));
+  container.innerHTML = '';
+  
+  querySnap.forEach(docSnap => {
+    const data = docSnap.data();
+    const img = document.createElement('img');
+    img.src = data.url;
+    img.className = 'avatar-option';
+    img.onclick = () => {
+      document.querySelectorAll('.avatar-option').forEach(i => i.classList.remove('selected'));
+      img.classList.add('selected');
+      selectedAvatarUrl = data.url;
+    };
+    container.appendChild(img);
+  });
+};
+
+window.closeProfileModal = function() {
+  document.getElementById('addProfileModal').style.display = 'none';
+};
+
+window.saveNewProfile = async function() {
+  const name = document.getElementById('newProfName').value.trim();
+  const isKids = document.getElementById('newProfKids').checked;
+
+  if (!name) return alert("Por favor asigna un nombre al perfil.");
+
+  const userRef = doc(db, "users", currentUser.uid);
+  const userSnap = await getDoc(userRef);
+  let profiles = userSnap.data().profiles || [];
+
+  profiles.push({ name, isKids, avatar: selectedAvatarUrl });
+
+  await updateDoc(userRef, { profiles });
+  closeProfileModal();
+  loadUserProfiles();
+};
+
+window.logoutUser = () => signOut(auth);
+
+// Configuración & Temas Dinámicos
+window.openSettings = () => document.getElementById('settingsModal').style.display = 'flex';
+window.closeSettingsModal = () => document.getElementById('settingsModal').style.display = 'none';
+window.updateSecondaryColor = (hex) => {
+  document.documentElement.style.setProperty('--accent-color', hex);
+  localStorage.setItem('lumera_accent_color', hex);
+};
+window.changeLanguage = (lang) => {
+  localStorage.setItem('lumera_lang', lang);
+};
