@@ -1,0 +1,112 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lumera Sparks</title>
+  <link rel="icon" type="image/png" href="https://i.imgur.com/cCqp6Qt.png">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body { background: #000; overflow: hidden; }
+    .sparks-container {
+      height: 100vh;
+      width: 100vw;
+      overflow-y: scroll;
+      scroll-snap-type: y mandatory;
+    }
+    .spark-card {
+      height: 100vh;
+      width: 100vw;
+      scroll-snap-align: start;
+      position: relative;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+    .spark-card video { width: 100%; height: 100%; object-fit: cover; }
+    .spark-overlay {
+      position: absolute;
+      bottom: 40px; right: 20px;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      gap: 20px;
+      z-index: 10;
+    }
+    .like-btn {
+      background: rgba(0,0,0,0.6);
+      border: 1px solid rgba(255,255,255,0.2);
+      border-radius: 50%;
+      width: 50px; height: 50px;
+      display: flex; align-items: center; justify-content: center;
+      color: #fff;
+    }
+    .like-btn.active { color: #ff0055; border-color: #ff0055; }
+    .spark-info {
+      position: absolute;
+      bottom: 40px; left: 20px;
+      z-index: 10;
+      max-width: 70%;
+    }
+    .spark-nav-back {
+      position: absolute; top: 20px; left: 20px; z-index: 20;
+    }
+  </style>
+</head>
+<body>
+  <div class="spark-nav-back" onclick="window.location.href='home.html'">
+    <svg class="icon-svg" viewBox="0 0 24 24" style="width:36px; height:36px; cursor:pointer;"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+  </div>
+
+  <div id="sparksContainer" class="sparks-container"></div>
+
+  <script type="module">
+    import { db } from './firebase.js';
+    import { collection, getDocs } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+
+    async function loadSparks() {
+      const querySnapshot = await getDocs(collection(db, "sparks"));
+      const container = document.getElementById('sparksContainer');
+      container.innerHTML = '';
+
+      let likedCategories = JSON.parse(localStorage.getItem('lumera_spark_likes') || '{}');
+
+      let sparksList = [];
+      querySnapshot.forEach(doc => sparksList.push({ id: doc.id, ...doc.data() }));
+
+      // Algoritmo simple: Priorizar categorías con más likes
+      sparksList.sort((a, b) => (likedCategories[b.category] || 0) - (likedCategories[a.category] || 0));
+
+      sparksList.forEach(spark => {
+        const card = document.createElement('div');
+        card.className = 'spark-card';
+        card.innerHTML = `
+          <video src="${spark.videoUrl}" loop playsinline onclick="this.paused ? this.play() : this.pause()"></video>
+          <div class="spark-info">
+            <h3>@${spark.name}</h3>
+            <p style="color:var(--text-muted);">${spark.category || 'General'}</p>
+          </div>
+          <div class="spark-overlay">
+            <button class="like-btn" id="like-${spark.id}">
+              <svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
+            </button>
+          </div>
+        `;
+        container.appendChild(card);
+
+        // Evento de Like
+        const btn = card.querySelector(`#like-${spark.id}`);
+        btn.onclick = () => {
+          btn.classList.toggle('active');
+          if (spark.category) {
+            likedCategories[spark.category] = (likedCategories[spark.category] || 0) + 1;
+            localStorage.setItem('lumera_spark_likes', JSON.stringify(likedCategories));
+          }
+        };
+      });
+    }
+
+    loadSparks();
+  </script>
+</body>
+</html>
