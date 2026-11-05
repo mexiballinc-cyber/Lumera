@@ -1,0 +1,152 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Lumera CMS - Contenido</title>
+  <link rel="icon" type="image/png" href="https://i.imgur.com/cCqp6Qt.png">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    .cms-container { max-width: 1000px; margin: 40px auto; padding: 20px; }
+    .cms-card { background: var(--bg-card); padding: 30px; border-radius: 8px; margin-bottom: 25px; }
+    .grid-2 { display: grid; grid-template-columns: 1fr 1fr; gap: 15px; }
+    .input-box { width: 100%; padding: 10px; background: #222; border: 1px solid #444; color: #fff; margin-top: 5px; margin-bottom: 15px; border-radius: 4px; }
+    .lang-block { border: 1px solid #333; padding: 15px; border-radius: 6px; margin-top: 10px; background: #141414; }
+  </style>
+</head>
+<body>
+  <div class="bg-glow"></div>
+
+  <div class="cms-container">
+    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px;">
+      <h1>CMS de Contenido Multimedia 🎬</h1>
+      <a href="admin.html" style="color:var(--accent-color);">← Volver a Ajustes</a>
+    </div>
+
+    <div class="cms-card">
+      <h2>Publicar Nuevo Contenido</h2>
+      
+      <div class="grid-2">
+        <div>
+          <label>Título Principal</label>
+          <input type="text" id="contentTitle" class="input-box">
+        </div>
+        <div>
+          <label>Tipo de Contenido</label>
+          <select id="contentType" class="input-box">
+            <option value="movie">Película</option>
+            <option value="series">Serie</option>
+          </select>
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label>Año de Estreno</label>
+          <input type="number" id="contentYear" class="input-box" value="2026">
+        </div>
+        <div>
+          <label>Clasificación de Edad (Si es >10 se oculta en Kids)</label>
+          <input type="number" id="contentAge" class="input-box" placeholder="Ej: 7, 13, 18">
+        </div>
+      </div>
+
+      <div class="grid-2">
+        <div>
+          <label>URL Portada Poster (Imgur)</label>
+          <input type="url" id="posterUrl" class="input-box">
+        </div>
+        <div>
+          <label>URL Banner Fondo (Imgur)</label>
+          <input type="url" id="bannerUrl" class="input-box">
+        </div>
+      </div>
+
+      <h3>Descripciones i18n (4 Idiomas)</h3>
+      <div class="lang-block">
+        <label>Español (ES)</label>
+        <textarea id="synopsis_es" class="input-box" rows="2"></textarea>
+
+        <label>Inglés (EN)</label>
+        <textarea id="synopsis_en" class="input-box" rows="2"></textarea>
+
+        <label>Portugués (PT)</label>
+        <textarea id="synopsis_pt" class="input-box" rows="2"></textarea>
+
+        <label>Francés (FR)</label>
+        <textarea id="synopsis_fr" class="input-box" rows="2"></textarea>
+      </div>
+
+      <h3 style="margin-top:20px;">Fuentes de Video & Subtítulos (WebArchive)</h3>
+      <div class="lang-block">
+        <div class="grid-2">
+          <div>
+            <label>Link Audio Español</label>
+            <input type="url" id="audio_es" class="input-box">
+          </div>
+          <div>
+            <label>Link Audio Inglés</label>
+            <input type="url" id="audio_en" class="input-box">
+          </div>
+        </div>
+        <div class="grid-2">
+          <div>
+            <label>Link Audio Portugués</label>
+            <input type="url" id="audio_pt" class="input-box">
+          </div>
+          <div>
+            <label>Link Audio Francés</label>
+            <input type="url" id="audio_fr" class="input-box">
+          </div>
+        </div>
+      </div>
+
+      <button class="hero-btn" onclick="saveContent()" style="margin-top:20px; width:100%; padding:14px; font-size:16px;">Guardar y Publicar en Firebase</button>
+    </div>
+  </div>
+
+  <script type="module">
+    import { db } from './firebase.js';
+    import { collection, addDoc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+
+    window.saveContent = async function() {
+      const title = document.getElementById('contentTitle').value.trim();
+      const type = document.getElementById('contentType').value;
+      const year = parseInt(document.getElementById('contentYear').value);
+      const ageRating = parseInt(document.getElementById('contentAge').value || '0');
+      const poster = document.getElementById('posterUrl').value.trim();
+      const banner = document.getElementById('bannerUrl').value.trim();
+
+      if (!title || !poster) return alert("El título y el poster son obligatorios");
+
+      const mediaData = {
+        title,
+        type,
+        year,
+        ageRating,
+        images: { poster, banner },
+        i18n: {
+          es: { synopsis: document.getElementById('synopsis_es').value },
+          en: { synopsis: document.getElementById('synopsis_en').value },
+          pt: { synopsis: document.getElementById('synopsis_pt').value },
+          fr: { synopsis: document.getElementById('synopsis_fr').value }
+        },
+        sources: {
+          es: document.getElementById('audio_es').value.trim(),
+          en: document.getElementById('audio_en').value.trim(),
+          pt: document.getElementById('audio_pt').value.trim(),
+          fr: document.getElementById('audio_fr').value.trim()
+        }
+      };
+
+      try {
+        await addDoc(collection(db, "content"), mediaData);
+        alert("Contenido registrado con éxito en Firebase");
+        window.location.reload();
+      } catch (err) {
+        alert("Error al guardar: " + err.message);
+      }
+    };
+  </script>
+</body>
+</html>
