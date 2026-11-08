@@ -80,6 +80,7 @@ if (backBtn) {
   });
 }
 
+// Carga segura de subtítulos vía Blob con forzado de modo showing
 async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Español') {
   const oldTracks = videoElement.querySelectorAll('track');
   oldTracks.forEach(t => t.remove());
@@ -88,9 +89,14 @@ async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Españo
 
   try {
     const response = await fetch(subtitleUrl);
-    if (!response.ok) throw new Error("No VTT");
-    const vttText = await response.text();
-    const blob = new Blob([vttText], { type: 'text/vtt' });
+    if (!response.ok) throw new Error("No se pudo descargar el VTT");
+    let vttText = await response.text();
+
+    if (!vttText.trim().startsWith('WEBVTT')) {
+      vttText = 'WEBVTT\n\n' + vttText;
+    }
+
+    const blob = new Blob([vttText], { type: 'text/vtt;charset=utf-8' });
     const track = document.createElement('track');
     track.kind = 'subtitles';
     track.label = langLabel;
@@ -101,16 +107,17 @@ async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Españo
     videoElement.appendChild(track);
     
     setTimeout(() => {
-      if (videoElement.textTracks && videoElement.textTracks[0]) {
-        videoElement.textTracks[0].mode = 'showing';
+      if (videoElement.textTracks && videoElement.textTracks.length > 0) {
+        for (let i = 0; i < videoElement.textTracks.length; i++) {
+          videoElement.textTracks[i].mode = 'showing';
+        }
       }
-    }, 100);
+    }, 150);
   } catch (err) {
-    console.error("Error subtítulo:", err);
+    console.error("Error al cargar subtítulos VTT:", err);
   }
 }
 
-// Extractor compatible con la nomenclatura del CMS (videoUrl / video / url / sources)
 function extractVideoUrlFromObj(obj) {
   if (!obj) return '';
   if (typeof obj === 'string') return obj;
@@ -158,7 +165,6 @@ async function initPlayer() {
     let subtitleSrc = '';
     let title = media.i18n?.[lang]?.title || media.title || 'Sin título';
 
-    // 1. Revisar si hay temporadas/episodios (Estructura de Serie)
     const seasons = media.seasons || media.temporadas || [];
     if (seasons.length > 0) {
       const season = seasons.find(s => String(s.seasonNumber || s.number || 1) === String(seasonNum)) || seasons[0];
@@ -174,7 +180,6 @@ async function initPlayer() {
       }
     }
 
-    // 2. Si no encontró en episodios, buscar en el documento raíz (Película o fallback)
     if (!videoSrc) {
       videoSrc = extractVideoUrlFromObj(media);
       subtitleSrc = extractSubUrlFromObj(media) || subtitleSrc;
