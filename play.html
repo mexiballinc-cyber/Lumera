@@ -1,100 +1,139 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Lumera Player</title>
-  <link rel="icon" type="image/png" href="https://i.imgur.com/cCqp6Qt.png">
-  <link rel="stylesheet" href="style.css">
+  <link rel="icon" type="image/png" href="https://i.imgur.com/cCqp6Qt.png" />
+  <link rel="stylesheet" href="style.css" />
   <style>
     * { box-sizing: border-box; margin: 0; padding: 0; }
-    body { background: #080808; color: #fff; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; height: 100vh; }
+    html, body { width: 100%; height: 100%; background: #000; overflow: hidden; font-family: "DM Sans", system-ui, sans-serif; }
     
-    .player-shell { position: relative; width: 100vw; height: 100vh; background: #000; }
-    video { width: 100%; height: 100%; object-fit: contain; display: block; }
+    .play-shell { position: relative; width: 100vw; height: 100vh; background: #000; }
+    /* Le quitamos controles nativos y estiramos el video */
+    video { width: 100%; height: 100%; object-fit: contain; background: #000; display: block; }
 
-    /* Topbar superior inspirada en el croquis */
-    .top-bar {
-      position: absolute; top: 0; left: 0; width: 100%; height: 70px;
+    /* Estilo para los subtítulos (evita que se oculten) */
+    video::cue {
+      background: rgba(0, 0, 0, 0.75);
+      color: #fff;
+      font-size: 1.1rem;
+      font-weight: 600;
+      border-radius: 6px;
+      padding: 4px 8px;
+    }
+
+    /* Topbar Liquid Glass */
+    .play-topbar {
+      position: absolute; top: 0; left: 0; right: 0; z-index: 25;
       display: flex; align-items: center; justify-content: space-between;
-      padding: 0 24px; z-index: 20;
+      padding: 20px 28px;
       background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, transparent 100%);
-      transition: opacity 0.3s ease;
+      transition: opacity 0.3s ease, transform 0.3s ease;
     }
 
-    .btn-icon-back {
-      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
-      color: #fff; width: 42px; height: 42px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      cursor: pointer; backdrop-filter: blur(8px); transition: all 0.2s;
+    .play-back-btn {
+      width: 44px; height: 44px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.18);
+      background: rgba(18, 18, 18, 0.55); backdrop-filter: blur(16px);
+      color: #fff; display: grid; place-items: center; cursor: pointer; transition: 0.2s ease;
     }
-    .btn-icon-back:hover { background: var(--accent-color, #d4af37); color: #000; border-color: var(--accent-color, #d4af37); }
-    .btn-icon-back svg { width: 22px; height: 22px; fill: currentColor; }
+    .play-back-btn:hover { border-color: var(--accent-color, #d4af37); transform: scale(1.05); color: var(--accent-color, #d4af37); }
+    .play-back-btn svg { width: 22px; height: 22px; fill: none; stroke: currentColor; stroke-width: 2.2; stroke-linecap: round; stroke-linejoin: round; }
 
-    .brand-tag { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 0.9rem; letter-spacing: 1px; color: var(--text-muted, #aaa); }
-    .brand-tag img { width: 20px; height: 20px; }
+    .play-brand { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.15em; color: rgba(255,255,255,0.7); text-transform: uppercase; }
+    .play-brand img { width: 20px; height: 20px; }
 
-    /* Controles inferiores limpios */
-    .bottom-controls {
-      position: absolute; bottom: 0; left: 0; width: 100%;
-      padding: 24px 30px; z-index: 20;
-      background: linear-gradient(0deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 60%, transparent 100%);
-      display: flex; align-items: flex-end; justify-content: space-between; gap: 20px;
-      transition: opacity 0.3s ease;
+    /* Panel de Control Inferior Liquid Glass */
+    .play-controls-panel {
+      position: absolute; bottom: 0; left: 0; right: 0; z-index: 25;
+      padding: 24px 32px 28px;
+      background: linear-gradient(0deg, rgba(6,6,8,0.92) 0%, rgba(6,6,8,0.4) 70%, transparent 100%);
+      display: flex; flex-direction: column; gap: 14px;
+      transition: opacity 0.3s ease, transform 0.3s ease;
     }
 
-    .media-info { flex: 1; max-width: 60%; }
-    .media-info h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 6px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
-    .media-info p { font-size: 0.95rem; color: #ccc; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+    /* Barra de Progreso Personalizada */
+    .progress-bar-wrap { position: relative; width: 100%; height: 6px; background: rgba(255,255,255,0.2); border-radius: 999px; cursor: pointer; transition: height 0.15s ease; }
+    .progress-bar-wrap:hover { height: 10px; }
+    .progress-fill { height: 100%; width: 0%; background: var(--accent-color, #d4af37); border-radius: 999px; position: relative; }
+    .progress-handle { position: absolute; right: -6px; top: 50%; transform: translateY(-50%); width: 14px; height: 14px; background: #fff; border-radius: 50%; box-shadow: 0 0 10px rgba(0,0,0,0.5); display: none; }
+    .progress-bar-wrap:hover .progress-handle { display: block; }
 
-    .control-selectors { display: flex; align-items: center; gap: 16px; background: rgba(20,20,20,0.7); padding: 12px 18px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); }
-    .selector-group { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; }
-    .selector-group svg { width: 18px; height: 18px; fill: var(--accent-color, #d4af37); }
+    .controls-row { display: flex; align-items: center; justify-content: space-between; gap: 16px; }
+    .left-controls { display: flex; align-items: center; gap: 18px; min-width: 0; }
     
-    select.clean-dropdown {
-      background: #111; color: #fff; border: 1px solid #333;
-      padding: 8px 12px; border-radius: 6px; outline: none; font-size: 0.9rem; cursor: pointer;
+    .btn-play-toggle {
+      width: 48px; height: 48px; border-radius: 50%; border: 1px solid rgba(255,255,255,0.2);
+      background: rgba(255,255,255,0.12); backdrop-filter: blur(12px); color: #fff;
+      display: grid; place-items: center; cursor: pointer; transition: 0.2s ease;
     }
-    select.clean-dropdown:focus { border-color: var(--accent-color, #d4af37); }
+    .btn-play-toggle:hover { border-color: var(--accent-color, #d4af37); background: var(--accent-color, #d4af37); color: #000; }
+    .btn-play-toggle svg { width: 22px; height: 22px; fill: currentColor; }
 
-    /* Ocultar controles automáticos */
-    body.user-inactive .top-bar,
-    body.user-inactive .bottom-controls { opacity: 0; pointer-events: none; }
+    .meta-text { display: flex; flex-direction: column; min-width: 0; }
+    .meta-title { font-size: 1.25rem; font-weight: 700; color: #fff; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .meta-time { font-size: 0.8rem; color: rgba(255,255,255,0.6); font-weight: 600; margin-top: 2px; }
+
+    .right-selectors { display: flex; align-items: center; gap: 12px; }
+    .glass-select-wrap {
+      display: flex; align-items: center; gap: 8px; padding: 8px 14px;
+      background: rgba(20,20,24,0.65); border: 1px solid rgba(255,255,255,0.12);
+      backdrop-filter: blur(16px); border-radius: 12px;
+    }
+    .glass-select-wrap svg { width: 18px; height: 18px; fill: var(--accent-color, #d4af37); }
+    .glass-select-wrap select { background: transparent; color: #fff; border: none; outline: none; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
+    .glass-select-wrap select option { background: #141416; color: #fff; }
+
+    /* Ocultar UI cuando el usuario está inactivo */
+    body.controls-hidden .play-topbar,
+    body.controls-hidden .play-controls-panel { opacity: 0; pointer-events: none; transform: translateY(8px); }
+    body.controls-hidden .play-topbar { transform: translateY(-8px); }
   </style>
 </head>
-<body>
-  <div class="player-shell">
-    <div class="top-bar">
-      <button class="btn-icon-back" onclick="window.history.back()" aria-label="Volver">
-        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+<body class="play-page">
+  <div class="play-shell">
+    <video id="lumeraVideoPlayer" playsinline autoplay></video>
+
+    <header class="play-topbar">
+      <button class="play-back-btn" id="backBtn" aria-label="Volver">
+        <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
       </button>
-      <div class="brand-tag">
+      <div class="play-brand">
         <img src="https://i.imgur.com/cCqp6Qt.png" alt="Lumera">
-        <span>LUMERA PLAYER</span>
+        <span>Lumera Player</span>
       </div>
-    </div>
+    </header>
 
-    <video id="lumeraVideoPlayer" controls autoplay playsinline></video>
-
-    <div class="bottom-controls">
-      <div class="media-info">
-        <h1 id="playerTitle">Cargando contenido...</h1>
-        <p id="playerSynopsis"></p>
+    <div class="play-controls-panel">
+      <!-- Barra de progreso personalizada superior -->
+      <div class="progress-bar-wrap" id="progressBar">
+        <div class="progress-fill" id="progressFill">
+          <div class="progress-handle"></div>
+        </div>
       </div>
 
-      <div class="control-selectors">
-        <!-- Audio / Doblaje con SVG -->
-        <div class="selector-group">
-          <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
-          <select id="audioSelect" class="clean-dropdown"></select>
+      <div class="controls-row">
+        <div class="left-controls">
+          <button class="btn-play-toggle" id="playPauseBtn" aria-label="Reproducir/Pausar">
+            <svg id="playIcon" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
+            <svg id="pauseIcon" viewBox="0 0 24 24" style="display:none;"><path d="M6 19h4V5H6v14zm8-14v14h4V5h-4z"/></svg>
+          </button>
+          <div class="meta-text">
+            <span class="meta-title" id="mediaTitle">Cargando...</span>
+            <span class="meta-time" id="timeDisplay">00:00 / 00:00</span>
+          </div>
         </div>
 
-        <!-- Subtítulos CC con SVG -->
-        <div class="selector-group">
-          <svg viewBox="0 0 24 24"><path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z"/></svg>
-          <select id="subtitleSelect" class="clean-dropdown">
-            <option value="">Desactivado</option>
-          </select>
+        <div class="right-selectors">
+          <div class="glass-select-wrap">
+            <svg viewBox="0 0 24 24"><path d="M12 3v10.55c-.59-.34-1.27-.55-2-.55-2.21 0-4 1.79-4 4s1.79 4 4 4 4-1.79 4-4V7h4V3h-6z"/></svg>
+            <select id="audioSelect"></select>
+          </div>
+          <div class="glass-select-wrap">
+            <svg viewBox="0 0 24 24"><path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z"/></svg>
+            <select id="subtitleSelect"><option value="">Off</option></select>
+          </div>
         </div>
       </div>
     </div>
