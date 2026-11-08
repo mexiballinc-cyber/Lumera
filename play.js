@@ -3,9 +3,8 @@ import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-
 
 const urlParams = new URLSearchParams(window.location.search);
 const mediaId = urlParams.get('id');
-const episodeNum = urlParams.get('ep');
-const seasonNum = urlParams.get('season') || 1;
-const type = urlParams.get('type') || 'movie';
+const episodeNum = urlParams.get('ep') || '1';
+const seasonNum = urlParams.get('season') || '1';
 const lang = localStorage.getItem('lumera_lang') || 'es';
 
 const videoPlayer = document.getElementById('lumeraVideoPlayer');
@@ -22,7 +21,6 @@ const audioSelect = document.getElementById('audioSelect');
 
 let hideTimeout;
 
-// Ocultar controles cuando el cursor está inactivo durante la reproducción
 function resetControlsTimer() {
   document.body.classList.remove('controls-hidden');
   clearTimeout(hideTimeout);
@@ -36,7 +34,6 @@ function resetControlsTimer() {
 document.addEventListener('mousemove', resetControlsTimer);
 document.addEventListener('touchstart', resetControlsTimer);
 
-// Alternar Play / Pausa
 if (playPauseBtn) {
   playPauseBtn.addEventListener('click', () => {
     if (videoPlayer.paused) videoPlayer.play();
@@ -56,7 +53,6 @@ videoPlayer.addEventListener('pause', () => {
   document.body.classList.remove('controls-hidden');
 });
 
-// Formato de tiempo (MM:SS)
 function formatTime(sec) {
   if (isNaN(sec)) return "00:00";
   const m = Math.floor(sec / 60);
@@ -64,14 +60,12 @@ function formatTime(sec) {
   return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
-// Actualizar la barra de progreso personalizada
 videoPlayer.addEventListener('timeupdate', () => {
   const pct = (videoPlayer.currentTime / videoPlayer.duration) * 100 || 0;
   if (progressFill) progressFill.style.width = `${pct}%`;
   if (timeDisplay) timeDisplay.textContent = `${formatTime(videoPlayer.currentTime)} / ${formatTime(videoPlayer.duration)}`;
 });
 
-// Buscar punto de reproducción al hacer clic en la barra
 if (progressBar) {
   progressBar.addEventListener('click', (e) => {
     const rect = progressBar.getBoundingClientRect();
@@ -80,18 +74,12 @@ if (progressBar) {
   });
 }
 
-// Botón de regresar
 if (backBtn) {
   backBtn.addEventListener('click', () => {
-    if (document.referrer.includes('details.html') || document.referrer.includes('home.html')) {
-      window.history.back();
-    } else {
-      window.location.href = mediaId ? `details.html?id=${encodeURIComponent(mediaId)}` : 'home.html';
-    }
+    window.history.back();
   });
 }
 
-// Descargar subtítulos VTT vía Blob para evitar problemas de CORS en Firefox/Chrome
 async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Español') {
   const oldTracks = videoElement.querySelectorAll('track');
   oldTracks.forEach(t => t.remove());
@@ -100,7 +88,7 @@ async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Españo
 
   try {
     const response = await fetch(subtitleUrl);
-    if (!response.ok) throw new Error("No se pudo descargar el VTT");
+    if (!response.ok) throw new Error("No VTT");
     const vttText = await response.text();
     const blob = new Blob([vttText], { type: 'text/vtt' });
     const track = document.createElement('track');
@@ -118,33 +106,41 @@ async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Españo
       }
     }, 100);
   } catch (err) {
-    console.error("Error al cargar subtítulo VTT:", err);
+    console.error("Error subtítulo:", err);
   }
 }
 
-// Extractor todoterreno de URL de video
-function extractUrl(obj) {
+// Extractor compatible con la nomenclatura del CMS (videoUrl / video / url / sources)
+function extractVideoUrlFromObj(obj) {
   if (!obj) return '';
   if (typeof obj === 'string') return obj;
+  if (obj.videoUrl) return obj.videoUrl;
+  if (obj.video) return obj.video;
+  if (obj.url) return obj.url;
   if (typeof obj.sources === 'string') return obj.sources;
   if (obj.sources && typeof obj.sources === 'object') {
-    return obj.sources[lang] || obj.sources.es || Object.values(obj.sources)[0] || '';
+    const val = obj.sources[lang] || obj.sources.es || Object.values(obj.sources)[0];
+    if (typeof val === 'string') return val;
+    if (val && typeof val === 'object') return val.videoUrl || val.url || val.video || '';
   }
-  return obj.videoUrl || obj.video || obj.url || obj.link || obj.videoLink || '';
+  return '';
 }
 
-// Extractor todoterreno de URL de subtítulos
-function extractSub(obj) {
+function extractSubUrlFromObj(obj) {
   if (!obj) return '';
+  if (typeof obj === 'string') return obj;
+  if (obj.subtitleUrl) return obj.subtitleUrl;
+  if (obj.subUrl) return obj.subUrl;
+  if (obj.subtitlesUrl) return obj.subtitlesUrl;
   if (typeof obj.subtitles === 'string') return obj.subtitles;
   if (obj.subtitles && typeof obj.subtitles === 'object') {
-    return obj.subtitles[lang] || obj.subtitles.es || Object.values(obj.subtitles)[0] || '';
+    const val = obj.subtitles[lang] || obj.subtitles.es || Object.values(obj.subtitles)[0];
+    if (typeof val === 'string') return val;
   }
-  return obj.subLink || obj.subtitleUrl || obj.subtitlesUrl || '';
+  return '';
 }
 
 async function initPlayer() {
-  // Redireccionar si no hay id de contenido en la URL
   if (!mediaId) {
     window.location.href = 'home.html';
     return;
@@ -153,7 +149,7 @@ async function initPlayer() {
   try {
     const docSnap = await getDoc(doc(db, "content", mediaId));
     if (!docSnap.exists()) {
-      if (mediaTitle) mediaTitle.textContent = "Contenido no disponible";
+      if (mediaTitle) mediaTitle.textContent = "Contenido no disponible en Firestore";
       return;
     }
     
@@ -162,25 +158,30 @@ async function initPlayer() {
     let subtitleSrc = '';
     let title = media.i18n?.[lang]?.title || media.title || 'Sin título';
 
-    if (type === 'movie' || !episodeNum) {
-      videoSrc = extractUrl(media);
-      subtitleSrc = extractSub(media);
-    } else {
-      const seasons = media.seasons || [];
-      const season = seasons.find(s => String(s.seasonNumber) === String(seasonNum)) || seasons[0];
-      if (season) {
-        const ep = (season.episodes || []).find(e => String(e.episodeNumber) === String(episodeNum)) || season.episodes?.[0];
+    // 1. Revisar si hay temporadas/episodios (Estructura de Serie)
+    const seasons = media.seasons || media.temporadas || [];
+    if (seasons.length > 0) {
+      const season = seasons.find(s => String(s.seasonNumber || s.number || 1) === String(seasonNum)) || seasons[0];
+      const episodes = season.episodes || season.episodios || [];
+      if (episodes.length > 0) {
+        const ep = episodes.find(e => String(e.episodeNumber || e.number || 1) === String(episodeNum)) || episodes[0];
         if (ep) {
-          videoSrc = extractUrl(ep);
-          subtitleSrc = extractSub(ep);
-          const epTitle = ep.i18n?.[lang]?.title || ep.title || `Episodio ${ep.episodeNumber}`;
-          title = `${title} - E${ep.episodeNumber}: ${epTitle}`;
+          videoSrc = extractVideoUrlFromObj(ep);
+          subtitleSrc = extractSubUrlFromObj(ep);
+          const epTitle = ep.episodeTitle || ep.title || ep.name || `Episodio ${episodeNum}`;
+          title = `${title} - E${episodeNum}: ${epTitle}`;
         }
       }
     }
 
+    // 2. Si no encontró en episodios, buscar en el documento raíz (Película o fallback)
     if (!videoSrc) {
-      if (mediaTitle) mediaTitle.textContent = "URL de video no encontrada";
+      videoSrc = extractVideoUrlFromObj(media);
+      subtitleSrc = extractSubUrlFromObj(media) || subtitleSrc;
+    }
+
+    if (!videoSrc) {
+      if (mediaTitle) mediaTitle.textContent = "No se encontró URL de video para este contenido";
       return;
     }
 
@@ -208,7 +209,7 @@ async function initPlayer() {
 
   } catch (err) {
     console.error("Error al iniciar reproductor:", err);
-    if (mediaTitle) mediaTitle.textContent = "Error al reproducir contenido";
+    if (mediaTitle) mediaTitle.textContent = "Error al conectar con la base de datos";
   }
 }
 
