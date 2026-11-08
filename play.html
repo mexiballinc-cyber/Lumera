@@ -1,52 +1,105 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Lumera Player</title>
-  <link rel="icon" type="image/png" href="https://i.imgur.com/cCqp6Qt.png" />
-  <link rel="stylesheet" href="style.css" />
+  <link rel="icon" type="image/png" href="https://i.imgur.com/cCqp6Qt.png">
+  <link rel="stylesheet" href="style.css">
   <style>
-    :root{--play-overlay:rgba(6,6,8,.68);--play-border:rgba(255,255,255,.12)}
-    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#070707;color:#f5f2ea;font-family:"DM Sans",system-ui,sans-serif}body.play-page{overflow:hidden;background:radial-gradient(circle at top,rgba(212,175,55,.16),transparent 32%),#070707}
-    .play-shell{position:relative;width:100vw;height:100dvh;overflow:hidden;background:#000}.play-video-wrap{position:absolute;inset:0;background:#000}video{width:100%;height:100%;object-fit:contain;background:#000;display:block}
-    .play-topbar{position:absolute;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:20px 22px;background:linear-gradient(180deg,rgba(0,0,0,.75),rgba(0,0,0,.05));transition:opacity .25s,transform .25s}
-    .play-back,.play-pill,.icon-btn{border:1px solid var(--play-border);background:rgba(18,18,18,.45);backdrop-filter:blur(16px);color:#f0ece4;border-radius:12px;cursor:pointer;transition:.2s ease}.play-back{width:46px;height:46px;display:grid;place-items:center}.play-back:hover,.play-pill:hover,.icon-btn:hover{border-color:#d4af37;box-shadow:0 0 24px rgba(212,175,55,.26);transform:translateY(-1px)}.play-back svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-    .play-brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#e7dfcd;font-size:.72rem}.play-brand img{width:22px;height:22px;object-fit:contain;display:block}
-    .play-panel{position:absolute;left:24px;right:24px;bottom:24px;z-index:18;display:flex;align-items:end;justify-content:space-between;gap:20px;padding:18px 18px 14px;border-radius:22px;border:1px solid var(--play-border);background:linear-gradient(180deg,rgba(13,13,13,.18),rgba(10,10,10,.78));backdrop-filter:blur(12px);transition:opacity .25s,transform .25s;opacity:1}
-    .play-meta{flex:1;min-width:0}.play-tag{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:rgba(212,175,55,.12);border:1px solid rgba(212,175,55,.26);color:#f0d98f;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin-bottom:12px}.play-tag:before{content:"";width:7px;height:7px;border-radius:50%;background:#d4af37;box-shadow:0 0 14px rgba(212,175,55,.8)}.play-title{margin:0 0 8px;font-size:clamp(1.8rem,3vw,2.7rem);line-height:1.06;font-weight:800;letter-spacing:-.04em}.play-description{margin:0;max-width:660px;color:rgba(245,242,234,.82);font-size:.96rem;line-height:1.5}
-    .play-controls{display:flex;flex-direction:column;gap:12px;min-width:260px}.play-select-group{display:grid;grid-template-columns:repeat(2,minmax(120px,1fr));gap:10px}.play-field{display:flex;flex-direction:column;gap:6px;font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:rgba(245,242,234,.72)}.selector-dropdown{width:100%;min-height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(17,17,17,.95);color:#f5f2ea;padding:10px 12px;outline:none;font-weight:600}.selector-dropdown:focus{border-color:rgba(212,175,55,.85);box-shadow:0 0 0 3px rgba(212,175,55,.18)}
-    .play-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}.play-pill{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 14px;font-weight:700;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase}.play-pill.primary{background:linear-gradient(135deg,rgba(212,175,55,.95),rgba(240,217,139,.9));color:#120f08;border-color:transparent}.play-pill svg{width:18px;height:18px;display:block;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
-    .subtitle-status{position:absolute;z-index:25;left:50%;bottom:clamp(150px,22vh,230px);transform:translateX(-50%);max-width:calc(100vw - 32px);padding:10px 14px;border-radius:10px;background:rgba(25,25,25,.92);color:#f5f2ea;text-align:center;font-size:.9rem}.subtitle-status.is-error{color:#ffd2d2;border:1px solid rgba(255,100,100,.35)}
-    body.controls-hidden .play-panel,body.controls-hidden .play-topbar{opacity:0;pointer-events:none;transform:translateY(12px)}body.controls-hidden .play-topbar{transform:translateY(-12px)}body.controls-hidden .subtitle-status{opacity:0;transition:opacity .2s}
-    @media(max-width:760px){.play-panel{left:12px;right:12px;bottom:12px;flex-direction:column;align-items:stretch;gap:12px;padding:14px}.play-controls{width:100%;min-width:0}.play-select-group{grid-template-columns:1fr 1fr}.play-actions{justify-content:stretch}.play-pill{flex:1}.play-topbar{padding:14px}.subtitle-status{bottom:210px}}
-    @media(prefers-reduced-motion:reduce){.play-panel,.play-topbar{transition:none}}
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #080808; color: #fff; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; height: 100vh; }
+    
+    .player-shell { position: relative; width: 100vw; height: 100vh; background: #000; }
+    video { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+    /* Topbar superior inspirada en el croquis */
+    .top-bar {
+      position: absolute; top: 0; left: 0; width: 100%; height: 70px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; z-index: 20;
+      background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, transparent 100%);
+      transition: opacity 0.3s ease;
+    }
+
+    .btn-icon-back {
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+      color: #fff; width: 42px; height: 42px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; backdrop-filter: blur(8px); transition: all 0.2s;
+    }
+    .btn-icon-back:hover { background: var(--accent-color, #d4af37); color: #000; border-color: var(--accent-color, #d4af37); }
+    .btn-icon-back svg { width: 22px; height: 22px; fill: currentColor; }
+
+    .brand-tag { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 0.9rem; letter-spacing: 1px; color: var(--text-muted, #aaa); }
+    .brand-tag img { width: 20px; height: 20px; }
+
+    /* Controles inferiores limpios */
+    .bottom-controls {
+      position: absolute; bottom: 0; left: 0; width: 100%;
+      padding: 24px 30px; z-index: 20;
+      background: linear-gradient(0deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 60%, transparent 100%);
+      display: flex; align-items: flex-end; justify-content: space-between; gap: 20px;
+      transition: opacity 0.3s ease;
+    }
+
+    .media-info { flex: 1; max-width: 60%; }
+    .media-info h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 6px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+    .media-info p { font-size: 0.95rem; color: #ccc; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+    .control-selectors { display: flex; align-items: center; gap: 16px; background: rgba(20,20,20,0.7); padding: 12px 18px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); }
+    .selector-group { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; }
+    .selector-group svg { width: 18px; height: 18px; fill: var(--accent-color, #d4af37); }
+    
+    select.clean-dropdown {
+      background: #111; color: #fff; border: 1px solid #333;
+      padding: 8px 12px; border-radius: 6px; outline: none; font-size: 0.9rem; cursor: pointer;
+    }
+    select.clean-dropdown:focus { border-color: var(--accent-color, #d4af37); }
+
+    /* Ocultar controles automáticos */
+    body.user-inactive .top-bar,
+    body.user-inactive .bottom-controls { opacity: 0; pointer-events: none; }
   </style>
 </head>
-<body class="play-page">
-  <div class="play-shell">
-    <div class="play-video-wrap">
-      <video id="lumeraVideoPlayer" controls autoplay playsinline></video>
+<body>
+  <div class="player-shell">
+    <div class="top-bar">
+      <button class="btn-icon-back" onclick="window.history.back()" aria-label="Volver">
+        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <div class="brand-tag">
+        <img src="https://i.imgur.com/cCqp6Qt.png" alt="Lumera">
+        <span>LUMERA PLAYER</span>
+      </div>
     </div>
-    <div class="play-topbar">
-      <button class="play-back" type="button" id="backBtn" aria-label="Volver"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
-      <div class="play-brand"><img src="https://i.imgur.com/0QS9bH3.png" alt="Lumera" /><span>Lumera</span></div>
-    </div>
-    <div class="play-panel">
-      <div class="play-meta"><div class="play-tag">Ahora viendo</div><h1 id="mediaTitle" class="play-title">Cargando...</h1><p id="mediaDescription" class="play-description">Preparando el contenido...</p></div>
-      <div class="play-controls">
-        <div class="play-select-group">
-          <label class="play-field"><span>Audio</span><select id="audioSelect" class="selector-dropdown"></select></label>
-          <label class="play-field"><span>Subtítulos</span><select id="subtitleSelect" class="selector-dropdown"><option value="">Off</option></select></label>
+
+    <video id="lumeraVideoPlayer" controls autoplay playsinline></video>
+
+    <div class="bottom-controls">
+      <div class="media-info">
+        <h1 id="playerTitle">Cargando contenido...</h1>
+        <p id="playerSynopsis"></p>
+      </div>
+
+      <div class="control-selectors">
+        <!-- Audio / Doblaje con SVG -->
+        <div class="selector-group">
+          <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+          <select id="audioSelect" class="clean-dropdown"></select>
         </div>
-        <div class="play-actions">
-          <button id="prevEpisodeBtn" class="play-pill" type="button"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg><span>Anterior</span></button>
-          <button id="nextEpisodeBtn" class="play-pill primary" type="button"><span>Siguiente</span><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
+
+        <!-- Subtítulos CC con SVG -->
+        <div class="selector-group">
+          <svg viewBox="0 0 24 24"><path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z"/></svg>
+          <select id="subtitleSelect" class="clean-dropdown">
+            <option value="">Desactivado</option>
+          </select>
         </div>
       </div>
     </div>
-    <p id="subtitleStatus" class="subtitle-status" role="status" aria-live="polite" hidden></p>
   </div>
+
   <script type="module" src="play.js"></script>
 </body>
 </html>
