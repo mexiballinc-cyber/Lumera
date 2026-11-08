@@ -1,15 +1,15 @@
 const dictionaries = {
   es: {
-    cmsTitle:'CMS Películas y Series',back:'← Volver a Ajustes',publishHeading:'Añadir contenido',localeHint:'Completa los datos de cada idioma usando las banderas. El póster, banner y metadatos generales se comparten.',interfaceLanguage:'Idioma de interfaz',activeLanguage:'Idioma activo',contentName:'Nombre',description:'Descripción',participants:'Participantes',poster:'Portada (URL)',banner:'Banner (URL)',year:'Año',ageRating:'Clasificación de edad (>10 se oculta en Kids)',contentType:'¿Serie o película?',movie:'Película',series:'Serie',playbackForLanguage:'Video y subtítulos del idioma seleccionado',videoUrl:'URL del video',subtitleUrl:'URL de subtítulos (.vtt)',subtitleHint:'Los subtítulos deben ser un archivo WebVTT (.vtt) accesible por URL.',seasonsEpisodes:'Temporadas y episodios',season:'Temporada',seasonName:'Nombre de la temporada',episode:'Episodio',episodeTitle:'Título del episodio',addSeason:'+ Agregar temporada',addEpisode:'+ Agregar episodio',remove:'Quitar',publish:'Guardar y publicar en Firebase',catalog:'Catálogo actual',loading:'Cargando…',noContent:'Aún no hay contenido publicado.',untitled:'Sin título',delete:'Eliminar',edit:'Editar',confirmDelete:'¿Seguro que deseas eliminar este contenido?',deleteError:'No se pudo eliminar el contenido.',required:'Ingresa un nombre en al menos un idioma y la URL del póster.',published:'Contenido publicado con éxito.',updated:'Contenido actualizado con éxito.',cancelEdit:'Cancelar edición',saveChanges:'Guardar cambios',saveError:'No se pudo guardar. Revisa los permisos de Firestore e inténtalo de nuevo.',loadError:'No se pudo cargar el catálogo. Revisa tu conexión y los permisos de Firestore.',editLoadError:'No se pudo abrir el contenido para editarlo.',titlePlaceholder:'Nombre en el idioma seleccionado',descriptionPlaceholder:'Descripción en el idioma seleccionado',participantsPlaceholder:'Actores, directores, etc.',imageUrlPlaceholder:'https://…',videoPlaceholder:'URL del video del idioma activo',subtitlePlaceholder:'URL de subtítulos del idioma activo',play:'Reproducir',episodes:'Episodios',backLabel:'Volver',noDescription:'Sin descripción disponible.',detailsUnavailable:'Contenido no disponible',missingMedia:'No encontramos este contenido.',detailsLoadError:'No se pudo cargar el contenido.',noEpisodes:'Todavía no hay episodios publicados.',off:'Desactivado',playbackError:'No se pudo cargar la reproducción',subtitleLoadError:'No se pudieron cargar los subtítulos. Verifica que el enlace sea un archivo .vtt válido.',noVideoSource:'No hay una URL de video válida para este idioma.',videoLoadError:'No se pudo reproducir este video. Comprueba el enlace y el formato compatible.',autoplayHint:'Pulsa reproducir para comenzar.',home:'Inicio',search:'Buscar',settings:'Configuración',kids:'Kids',sparks:'Sparks',heroEyebrow:'TU PRÓXIMA HISTORIA',viewDetails:'Ver detalles',connecting:'Conectando con tu catálogo…',continueKicker:'RETOMA DONDE LO DEJASTE',continueWatching:'Continuar viendo',newArrivals:'RECIÉN LLEGADOS',newItems:'Nuevos agregados',catalogKicker:'SELECCIÓN LUMERA',explore:'Explora el catálogo',catalogEmpty:'Tu catálogo te espera',findStory:'ENCUENTRA TU PRÓXIMA HISTORIA',searchContent:'Buscar contenido',titleLabel:'Título',category:'Categoría',all:'Todas',results:'Resultados',yourStyle:'A TU ESTILO',interfaceLang:'Idioma de la interfaz',accentColor:'Color de acento',accentDetails:'Detalles, bordes y resplandores',settingsNote:'Tu idioma y color se guardan en este dispositivo.',nowWatching:'Ahora viendo',audio:'Audio',subtitles:'Subtítulos',previous:'Anterior',next:'Siguiente',offLabel:'Off',noSearchResults:'No encontramos títulos con esos filtros.',tryOtherFilters:'Prueba con otra sección o ajusta los filtros.',catalogConnectedEmpty:'Catálogo conectado · aún no hay contenido publicado',catalogConnectError:'No se pudo conectar con el catálogo.',profileAccount:'Cuenta / perfiles'
+    cmsTitle:'CMS Películas y Series',back:'← Volver a Ajustes',publishHeading:'Añadir contenido',localeHint:'Completa los datos de cada idioma usando las banderas. El póster, banner y metadatos generales se comparten.',interfaceLang:'Idioma de la interfaz',play:'Reproducir',viewDetails:'Ver detalles',connectCatalog:'Conectando con tu catálogo…',continueWatching:'Continuar viendo',newArrivals:'Nuevos agregados',catalogKicker:'LUMERA PICKS',catalogEmpty:'Tu catálogo te espera',findStory:'ENCUENTRA TU PRÓXIMA HISTORIA',searchContent:'Buscar contenido',titleLabel:'Título',category:'Categoría',all:'Todas',results:'Resultados',yourStyle:'A TU ESTILO',accentColor:'Color de acento',accentDetails:'Detalles, bordes y resplandores',interfaceLanguage:'Idioma de la interfaz',audio:'Audio',subtitles:'Subtítulos',offLabel:'Off',previous:'Anterior',next:'Próximo',settings:'Ajustes',heroEyebrow:'TU PRÓXIMA HISTORIA',home:'Inicio',movie:'Películas',series:'Series',kids:'Kids',search:'Buscar',connecting:'Conectando con tu catálogo…',continueKicker:'RETOMA DONDE LO DEJASTE',newItems:'Nuevos agregados',explore:'Explora el catálogo',catalogConnectedEmpty:'Catálogo conectado · aún no hay contenido publicado',catalogConnectError:'No se pudo conectar con el catálogo.',noSearchResults:'No encontramos títulos con esos filtros.',tryOtherFilters:'Prueba con otra sección o ajusta los filtros.'
   },
   en: {
-    cmsTitle:'Movies & Series CMS',back:'← Back to settings',publishHeading:'Add content',localeHint:'Enter each language version using the flags. Poster, banner, and general metadata are shared.',interfaceLanguage:'Interface language',activeLanguage:'Active language',contentName:'Name',description:'Description',participants:'Cast and crew',poster:'Poster (URL)',banner:'Banner (URL)',year:'Year',ageRating:'Age rating (>10 hidden in Kids)',contentType:'Series or movie?',movie:'Movie',series:'Series',playbackForLanguage:'Video and subtitles for selected language',videoUrl:'Video URL',subtitleUrl:'Subtitle URL (.vtt)',subtitleHint:'Subtitles must be a URL-accessible WebVTT (.vtt) file.',seasonsEpisodes:'Seasons and episodes',season:'Season',seasonName:'Season name',episode:'Episode',episodeTitle:'Episode title',addSeason:'+ Add season',addEpisode:'+ Add episode',remove:'Remove',publish:'Save and publish to Firebase',catalog:'Current catalog',loading:'Loading…',noContent:'No content published yet.',untitled:'Untitled',delete:'Delete',edit:'Edit',confirmDelete:'Are you sure you want to delete this content?',deleteError:'Could not delete the content.',required:'Enter a name in at least one language and the poster URL.',published:'Content published successfully.',updated:'Content updated successfully.',cancelEdit:'Cancel editing',saveChanges:'Save changes',saveError:'Could not save. Check Firestore permissions and try again.',loadError:'Could not load the catalog. Check your connection and Firestore permissions.',editLoadError:'Could not open this content for editing.',titlePlaceholder:'Name in the selected language',descriptionPlaceholder:'Description in the selected language',participantsPlaceholder:'Actors, directors, etc.',imageUrlPlaceholder:'https://…',videoPlaceholder:'Video URL for the active language',subtitlePlaceholder:'Subtitle URL for the active language',play:'Play',episodes:'Episodes',backLabel:'Back',noDescription:'No description available.',detailsUnavailable:'Content unavailable',missingMedia:'We could not find this title.',detailsLoadError:'Could not load this title.',noEpisodes:'No episodes published yet.',off:'Off',playbackError:'Could not load playback',subtitleLoadError:'Subtitles could not be loaded. Check that the link is a valid .vtt file.',noVideoSource:'There is no valid video URL for this language.',videoLoadError:'This video could not be played. Check the URL and supported format.',autoplayHint:'Press play to start.',home:'Home',search:'Search',settings:'Settings',kids:'Kids',sparks:'Sparks',heroEyebrow:'YOUR NEXT STORY',viewDetails:'View details',connecting:'Connecting to your catalog…',continueKicker:'PICK UP WHERE YOU LEFT OFF',continueWatching:'Continue watching',newArrivals:'NEW ARRIVALS',newItems:'Recently added',catalogKicker:'LUMERA PICKS',explore:'Explore the catalog',catalogEmpty:'Your catalog is waiting',findStory:'FIND YOUR NEXT STORY',searchContent:'Search content',titleLabel:'Title',category:'Category',all:'All',results:'Results',yourStyle:'YOUR STYLE',interfaceLang:'Interface language',accentColor:'Accent color',accentDetails:'Details, borders, and glow',settingsNote:'Your language and color are saved on this device.',nowWatching:'Now watching',audio:'Audio',subtitles:'Subtitles',previous:'Previous',next:'Next',offLabel:'Off',noSearchResults:'No titles match those filters.',tryOtherFilters:'Try another section or adjust the filters.',catalogConnectedEmpty:'Catalog connected · no content published yet',catalogConnectError:'Could not connect to the catalog.',profileAccount:'Account / profiles'
+    cmsTitle:'Movies & Series CMS',back:'← Back to settings',publishHeading:'Add content',localeHint:'Enter each language version using the flags. Poster, banner, and general metadata are shared.',interfaceLang:'Interface language',play:'Play',viewDetails:'View details',connectCatalog:'Connecting to your catalog…',continueWatching:'Continue watching',newArrivals:'New arrivals',catalogKicker:'LUMERA PICKS',catalogEmpty:'Your catalog is waiting',findStory:'FIND YOUR NEXT STORY',searchContent:'Search content',titleLabel:'Title',category:'Category',all:'All',results:'Results',yourStyle:'YOUR STYLE',accentColor:'Accent color',accentDetails:'Details, borders, and glows',interfaceLanguage:'Interface language',audio:'Audio',subtitles:'Subtitles',offLabel:'Off',previous:'Previous',next:'Next',settings:'Settings',heroEyebrow:'YOUR NEXT STORY',home:'Home',movie:'Movies',series:'Series',kids:'Kids',search:'Search',connecting:'Connecting to your catalog…',continueKicker:'PICK UP WHERE YOU LEFT OFF',newItems:'Recently added',explore:'Explore the catalog',catalogConnectedEmpty:'Catalog connected · no content published yet',catalogConnectError:'The catalog could not be reached.',noSearchResults:'No titles match those filters.',tryOtherFilters:'Try another section or adjust the filters.'
   },
   pt: {
-    cmsTitle:'CMS de Filmes e Séries',back:'← Voltar às configurações',publishHeading:'Adicionar conteúdo',localeHint:'Preencha cada idioma usando as bandeiras. Pôster, banner e metadados gerais são compartilhados.',interfaceLanguage:'Idioma da interface',activeLanguage:'Idioma ativo',contentName:'Nome',description:'Descrição',participants:'Elenco e equipe',poster:'Pôster (URL)',banner:'Banner (URL)',year:'Ano',ageRating:'Classificação etária (>10 fica oculto em Kids)',contentType:'Série ou filme?',movie:'Filme',series:'Série',playbackForLanguage:'Vídeo e legendas do idioma selecionado',videoUrl:'URL do vídeo',subtitleUrl:'URL das legendas (.vtt)',subtitleHint:'As legendas devem ser um arquivo WebVTT (.vtt) acessível por URL.',seasonsEpisodes:'Temporadas e episódios',season:'Temporada',seasonName:'Nome da temporada',episode:'Episódio',episodeTitle:'Título do episódio',addSeason:'+ Adicionar temporada',addEpisode:'+ Adicionar episódio',remove:'Remover',publish:'Salvar e publicar no Firebase',catalog:'Catálogo atual',loading:'Carregando…',noContent:'Ainda não há conteúdo publicado.',untitled:'Sem título',delete:'Excluir',edit:'Editar',confirmDelete:'Tem certeza de que deseja excluir este conteúdo?',deleteError:'Não foi possível excluir o conteúdo.',required:'Informe um nome em pelo menos um idioma e a URL do pôster.',published:'Conteúdo publicado com sucesso.',updated:'Conteúdo atualizado com sucesso.',cancelEdit:'Cancelar edição',saveChanges:'Salvar alterações',saveError:'Não foi possível salvar. Verifique as permissões do Firestore e tente novamente.',loadError:'Não foi possível carregar o catálogo. Verifique sua conexão e as permissões do Firestore.',editLoadError:'Não foi possível abrir este conteúdo para edição.',titlePlaceholder:'Nome no idioma selecionado',descriptionPlaceholder:'Descrição no idioma selecionado',participantsPlaceholder:'Atores, diretores etc.',imageUrlPlaceholder:'https://…',videoPlaceholder:'URL do vídeo do idioma ativo',subtitlePlaceholder:'URL das legendas do idioma ativo',play:'Reproduzir',episodes:'Episódios',backLabel:'Voltar',noDescription:'Descrição indisponível.',detailsUnavailable:'Conteúdo indisponível',missingMedia:'Não encontramos este conteúdo.',detailsLoadError:'Não foi possível carregar o conteúdo.',noEpisodes:'Ainda não há episódios publicados.',off:'Desativado',playbackError:'Não foi possível carregar a reprodução',subtitleLoadError:'Não foi possível carregar as legendas. Verifique se o link é um arquivo .vtt válido.',noVideoSource:'Não há uma URL de vídeo válida para este idioma.',videoLoadError:'Não foi possível reproduzir este vídeo. Verifique o link e o formato compatível.',autoplayHint:'Pressione reproduzir para começar.',home:'Início',search:'Buscar',settings:'Configurações',kids:'Kids',sparks:'Sparks',heroEyebrow:'SUA PRÓXIMA HISTÓRIA',viewDetails:'Ver detalhes',connecting:'Conectando ao catálogo…',continueKicker:'CONTINUE DE ONDE PAROU',continueWatching:'Continuar assistindo',newArrivals:'RECÉM-CHEGADOS',newItems:'Novidades',catalogKicker:'SELEÇÃO LUMERA',explore:'Explore o catálogo',catalogEmpty:'Seu catálogo está esperando',findStory:'ENCONTRE SUA PRÓXIMA HISTÓRIA',searchContent:'Buscar conteúdo',titleLabel:'Título',category:'Categoria',all:'Todas',results:'Resultados',yourStyle:'DO SEU JEITO',interfaceLang:'Idioma da interface',accentColor:'Cor de destaque',accentDetails:'Detalhes, bordas e brilhos',settingsNote:'Seu idioma e cor são salvos neste dispositivo.',nowWatching:'Assistindo agora',audio:'Áudio',subtitles:'Legendas',previous:'Anterior',next:'Próximo',offLabel:'Desativado',noSearchResults:'Nenhum título encontrado com esses filtros.',tryOtherFilters:'Tente outra seção ou ajuste os filtros.',catalogConnectedEmpty:'Catálogo conectado · ainda não há conteúdo publicado',catalogConnectError:'Não foi possível conectar ao catálogo.',profileAccount:'Conta / perfis'
+    cmsTitle:'CMS de Filmes e Séries',back:'← Voltar às configurações',publishHeading:'Adicionar conteúdo',localeHint:'Preencha cada idioma usando as bandeiras. Pôster, banner e metadados gerais são compartilhados.',interfaceLang:'Idioma da interface',play:'Reproduzir',viewDetails:'Ver detalhes',connectCatalog:'Conectando com seu catálogo…',continueWatching:'Continuar assistindo',newArrivals:'Novidades',catalogKicker:'LUMERA PICKS',catalogEmpty:'Seu catálogo está esperando',findStory:'ENCONTRE SUA PRÓXIMA HISTÓRIA',searchContent:'Buscar conteúdo',titleLabel:'Título',category:'Categoria',all:'Todas',results:'Resultados',yourStyle:'DO SEU JEITO',accentColor:'Cor de destaque',accentDetails:'Detalhes, bordas e brilhos',interfaceLanguage:'Idioma da interface',audio:'Áudio',subtitles:'Legendas',offLabel:'Off',previous:'Anterior',next:'Próximo',settings:'Configurações',heroEyebrow:'SUA PRÓXIMA HISTÓRIA',home:'Início',movie:'Filmes',series:'Séries',kids:'Kids',search:'Buscar',connecting:'Conectando com seu catálogo…',continueKicker:'CONTINUE DE ONDE PAROU',newItems:'Adicionados recentemente',explore:'Explore o catálogo',catalogConnectedEmpty:'Catálogo conectado · ainda não há conteúdo publicado',catalogConnectError:'Não foi possível conectar com o catálogo.',noSearchResults:'Não encontramos títulos com esses filtros.',tryOtherFilters:'Teste outra seção ou ajuste os filtros.'
   },
   fr: {
-    cmsTitle:'CMS Films et séries',back:'← Retour aux réglages',publishHeading:'Ajouter du contenu',localeHint:'Renseignez chaque langue avec les drapeaux. Affiche, bannière et métadonnées générales sont partagées.',interfaceLanguage:'Langue de l’interface',activeLanguage:'Langue active',contentName:'Nom',description:'Description',participants:'Distribution et équipe',poster:'Affiche (URL)',banner:'Bannière (URL)',year:'Année',ageRating:'Classification d’âge (>10 masqué dans Kids)',contentType:'Série ou film ?',movie:'Film',series:'Série',playbackForLanguage:'Vidéo et sous-titres de la langue sélectionnée',videoUrl:'URL de la vidéo',subtitleUrl:'URL des sous-titres (.vtt)',subtitleHint:'Les sous-titres doivent être un fichier WebVTT (.vtt) accessible par URL.',seasonsEpisodes:'Saisons et épisodes',season:'Saison',seasonName:'Nom de la saison',episode:'Épisode',episodeTitle:'Titre de l’épisode',addSeason:'+ Ajouter une saison',addEpisode:'+ Ajouter un épisode',remove:'Retirer',publish:'Enregistrer et publier sur Firebase',catalog:'Catalogue actuel',loading:'Chargement…',noContent:'Aucun contenu publié pour le moment.',untitled:'Sans titre',delete:'Supprimer',edit:'Modifier',confirmDelete:'Voulez-vous vraiment supprimer ce contenu ?',deleteError:'Impossible de supprimer le contenu.',required:'Saisissez un nom dans au moins une langue et l’URL de l’affiche.',published:'Contenu publié avec succès.',updated:'Contenu mis à jour avec succès.',cancelEdit:'Annuler la modification',saveChanges:'Enregistrer les modifications',saveError:'Impossible d’enregistrer. Vérifiez les autorisations Firestore et réessayez.',loadError:'Impossible de charger le catalogue. Vérifiez la connexion et les autorisations Firestore.',editLoadError:'Impossible d’ouvrir ce contenu pour le modifier.',titlePlaceholder:'Nom dans la langue sélectionnée',descriptionPlaceholder:'Description dans la langue sélectionnée',participantsPlaceholder:'Acteurs, réalisateurs, etc.',imageUrlPlaceholder:'https://…',videoPlaceholder:'URL vidéo de la langue active',subtitlePlaceholder:'URL des sous-titres de la langue active',play:'Lire',episodes:'Épisodes',backLabel:'Retour',noDescription:'Description indisponible.',detailsUnavailable:'Contenu indisponible',missingMedia:'Contenu introuvable.',detailsLoadError:'Impossible de charger le contenu.',noEpisodes:'Aucun épisode publié pour le moment.',off:'Désactivé',playbackError:'Impossible de charger la lecture',subtitleLoadError:'Impossible de charger les sous-titres. Vérifiez que le lien pointe vers un fichier .vtt valide.',noVideoSource:'Aucune URL vidéo valide pour cette langue.',videoLoadError:'Impossible de lire cette vidéo. Vérifiez le lien et le format.',autoplayHint:'Appuyez sur lecture pour commencer.',home:'Accueil',search:'Rechercher',settings:'Paramètres',kids:'Kids',sparks:'Sparks',heroEyebrow:'VOTRE PROCHAINE HISTOIRE',viewDetails:'Voir les détails',connecting:'Connexion à votre catalogue…',continueKicker:'REPRENEZ LÀ OÙ VOUS EN ÉTIEZ',continueWatching:'Reprendre la lecture',newArrivals:'NOUVEAUTÉS',newItems:'Récemment ajoutés',catalogKicker:'SÉLECTION LUMERA',explore:'Explorer le catalogue',catalogEmpty:'Votre catalogue vous attend',findStory:'TROUVEZ VOTRE PROCHAINE HISTOIRE',searchContent:'Rechercher du contenu',titleLabel:'Titre',category:'Catégorie',all:'Toutes',results:'Résultats',yourStyle:'À VOTRE GOÛT',interfaceLang:'Langue de l’interface',accentColor:'Couleur d’accentuation',accentDetails:'Détails, bordures et lueurs',settingsNote:'Votre langue et votre couleur sont enregistrées sur cet appareil.',nowWatching:'Lecture en cours',audio:'Audio',subtitles:'Sous-titres',previous:'Précédent',next:'Suivant',offLabel:'Désactivé',noSearchResults:'Aucun titre ne correspond à ces filtres.',tryOtherFilters:'Essayez une autre section ou modifiez les filtres.',catalogConnectedEmpty:'Catalogue connecté · aucun contenu publié pour le moment',catalogConnectError:'Impossible de se connecter au catalogue.',profileAccount:'Compte / profils'
+    cmsTitle:'CMS Films et séries',back:'← Retour aux réglages',publishHeading:'Ajouter du contenu',localeHint:'Renseignez chaque langue avec les drapeaux. Affiche, bannière et métadonnées générales sont partagées.',interfaceLang:'Langue de l’interface',play:'Lire',viewDetails:'Voir les détails',connectCatalog:'Connexion à votre catalogue…',continueWatching:'Continuer la lecture',newArrivals:'Nouveautés',catalogKicker:'LUMERA PICKS',catalogEmpty:'Votre catalogue vous attend',findStory:'TROUVEZ VOTRE PROCHAINE HISTOIRE',searchContent:'Rechercher du contenu',titleLabel:'Titre',category:'Catégorie',all:'Toutes',results:'Résultats',yourStyle:'À VOTRE GOÛT',accentColor:'Couleur d’accentuation',accentDetails:'Détails, bords et reflets',interfaceLanguage:'Langue de l’interface',audio:'Audio',subtitles:'Sous-titres',offLabel:'Off',previous:'Précédent',next:'Suivant',settings:'Paramètres',heroEyebrow:'VOTRE PROCHAINE HISTOIRE',home:'Accueil',movie:'Films',series:'Séries',kids:'Kids',search:'Rechercher',connecting:'Connexion à votre catalogue…',continueKicker:'REPRENEZ OÙ VOUS AVEZ ARRÊTÉ',newItems:'Récemment ajoutés',explore:'Explorez le catalogue',catalogConnectedEmpty:'Catalogue connecté · aucun contenu publié pour le moment',catalogConnectError:'Le catalogue est inaccessible.',noSearchResults:'Aucun titre ne correspond à ces filtres.',tryOtherFilters:'Essayez une autre section ou ajustez les filtres.'
   }
 };
 
@@ -22,13 +22,13 @@ const legacyTextKeys = {
   'Ver detalles':'viewDetails','View details':'viewDetails','Conectando con tu catálogo…':'connecting','Connecting to your catalog…':'connecting',
   'RETOMA DONDE LO DEJASTE':'continueKicker','PICK UP WHERE YOU LEFT OFF':'continueKicker','Continuar viendo':'continueWatching','Continue watching':'continueWatching',
   'RECIÉN LLEGADOS':'newArrivals','NEW ARRIVALS':'newArrivals','Nuevos agregados':'newItems','Recently added':'newItems','SELECCIÓN LUMERA':'catalogKicker','LUMERA PICKS':'catalogKicker',
-  'Explora el catálogo':'explore','Explore the catalog':'explore','Seu catálogo está esperando':'catalogEmpty','Tu catálogo te espera':'catalogEmpty','Your catalog is waiting':'catalogEmpty','Votre catalogue vous attend':'catalogEmpty',
+  'Explora el catálogo':'explore','Explore the catalog':'explore','Seu catálogo está esperando':'catalogEmpty','Tu catálogo te espera':'catalogEmpty','Your catalog is waiting':'catalogEmpty','[...]':'catalogEmpty',
   'ENCUENTRA TU PRÓXIMA HISTORIA':'findStory','FIND YOUR NEXT STORY':'findStory','ENCONTRE SUA PRÓXIMA HISTÓRIA':'findStory','TROUVEZ VOTRE PROCHAINE HISTOIRE':'findStory',
   'Buscar contenido':'searchContent','Search content':'searchContent','Rechercher du contenu':'searchContent','Título':'titleLabel','Title':'titleLabel','Titre':'titleLabel',
   'Categoría':'category','Category':'category','Categoria':'category','Catégorie':'category','Todas':'all','All':'all','Toutes':'all','Resultados':'results','Results':'results','Résultats':'results',
   'A TU ESTILO':'yourStyle','YOUR STYLE':'yourStyle','DO SEU JEITO':'yourStyle','À VOTRE GOÛT':'yourStyle','Idioma de la interfaz':'interfaceLang','Interface language':'interfaceLang','Idioma da interface':'interfaceLang','Langue de l’interface':'interfaceLang',
-  'Color de acento':'accentColor','Accent color':'accentColor','Cor de destaque':'accentColor','Couleur d’accentuation':'accentColor','Detalles, bordes y resplandores':'accentDetails','Your language and color are saved on this device.':'settingsNote',
-  'Ahora viendo':'nowWatching','Now watching':'nowWatching','Assistindo agora':'nowWatching','Lecture en cours':'nowWatching','Audio':'audio','Subtítulos':'subtitles','Subtitles':'subtitles','Legendas':'subtitles',
+  'Color de acento':'accentColor','Accent color':'accentColor','Cor de destaque':'accentColor','Couleur d’accentuation':'accentColor','Detalles, bordes y resplandores':'accentDetails','Details, borders, and glows':'accentDetails',
+  'Ahora viendo':'nowWatching','Now watching':'nowWatching','Assistindo agora':'nowWatching','Lecture en cours':'nowWatching','Audio':'audio','Subtítulos':'subtitles','Subtitles':'subtitles','Legendas':'subtitles','Sous-titres':'subtitles','Off':'offLabel',
   'Anterior':'previous','Previous':'previous','Próximo':'next','Siguiente':'next','Next':'next','Off':'offLabel',
   'No encontramos títulos con esos filtros.':'noSearchResults','No titles match those filters.':'noSearchResults','Prueba con otra sección o ajusta los filtros.':'tryOtherFilters',
   'Catálogo conectado · aún no hay contenido publicado':'catalogConnectedEmpty','No se pudo conectar con el catálogo.':'catalogConnectError'
@@ -36,9 +36,19 @@ const legacyTextKeys = {
 
 export const supportedLanguages=['es','en','pt','fr'];
 export const i18nDictionary=dictionaries;
-export function getLanguage(){const stored=localStorage.getItem('lumera_lang')||'es';return dictionaries[stored]?stored:'es';}
-export function t(key,language=getLanguage()){return dictionaries[language]?.[key]??dictionaries.es[key]??key;}
-export function translate(key,language=getLanguage()){return t(key,language);}
+
+export function getLanguage(){
+  const stored=localStorage.getItem('lumera_lang')||'es';
+  return dictionaries[stored]?stored:'es';
+}
+
+export function t(key,language=getLanguage()){
+  return dictionaries[language]?.[key] ?? dictionaries.es[key] ?? key;
+}
+
+export function translate(key,language=getLanguage()){
+  return t(key,language);
+}
 
 function translateLegacyText(root,language){
   if(!root?.ownerDocument && root!==document)return;
@@ -58,38 +68,93 @@ function translateLegacyText(root,language){
   changes.forEach(([node,value])=>{if(node.isConnected)node.nodeValue=value;});
 }
 
+let observer;
+let isApplyingTranslations=false;
+
 export function applyTranslations(root=document){
+  if(typeof document==='undefined')return getLanguage();
+  if(isApplyingTranslations)return getLanguage();
+
   const language=getLanguage();
   document.documentElement.lang=language;
-  const scope=root.nodeType===9?root:root;
-  scope.querySelectorAll?.('[data-i18n]').forEach((element)=>{const value=t(element.dataset.i18n,language);if(value!==element.dataset.i18n)element.textContent=value;});
-  scope.querySelectorAll?.('[data-i18n-placeholder]').forEach((element)=>{element.placeholder=t(element.dataset.i18nPlaceholder,language);});
-  scope.querySelectorAll?.('[data-i18n-aria-label]').forEach((element)=>element.setAttribute('aria-label',t(element.dataset.i18nAriaLabel,language)));
-  scope.querySelectorAll?.('input[placeholder],textarea[placeholder]').forEach((element)=>{const key=legacyTextKeys[element.placeholder];if(key)element.placeholder=t(key,language);});
-  translateLegacyText(scope,language);
+  const scope=root?.nodeType===9?root:root || document;
+  if(!scope) return language;
+
+  isApplyingTranslations=true;
+  try {
+    scope.querySelectorAll?.('[data-i18n]').forEach((element)=>{
+      const value=t(element.dataset.i18n,language);
+      if(value !== element.dataset.i18n && element.textContent !== value){
+        element.textContent=value;
+      }
+    });
+
+    scope.querySelectorAll?.('[data-i18n-placeholder]').forEach((element)=>{
+      const value=t(element.dataset.i18nPlaceholder,language);
+      if(element.placeholder !== value) element.placeholder=value;
+    });
+
+    scope.querySelectorAll?.('[data-i18n-aria-label]').forEach((element)=>{
+      const value=t(element.dataset.i18nAriaLabel,language);
+      if(element.getAttribute('aria-label') !== value) element.setAttribute('aria-label',value);
+    });
+
+    scope.querySelectorAll?.('input[placeholder],textarea[placeholder]').forEach((element)=>{
+      const key=legacyTextKeys[element.placeholder];
+      if(key){
+        const translated=t(key,language);
+        if(element.placeholder !== translated) element.placeholder=translated;
+      }
+    });
+
+    translateLegacyText(scope,language);
+  } finally {
+    isApplyingTranslations=false;
+  }
+
   return language;
 }
 
-let observer;
 export function initApp(){
   document.documentElement.style.setProperty('--accent-color',localStorage.getItem('lumera_accent_color')||'#d4af37');
   applyTranslations();
-  if(observer)observer.disconnect();
+
+  if(observer) observer.disconnect();
+
   observer=new MutationObserver((records)=>{
+    if(isApplyingTranslations) return;
     const roots=new Set();
     for(const record of records){
-      if(record.type==='characterData')roots.add(record.target.parentElement||document.body);
-      for(const node of record.addedNodes||[])if(node.nodeType===Node.ELEMENT_NODE)roots.add(node);
+      if(record.type==='characterData'){
+        const parent=record.target.parentElement || document.body;
+        if(parent) roots.add(parent);
+      }
+      for(const node of record.addedNodes||[]){
+        if(node.nodeType===Node.ELEMENT_NODE) roots.add(node);
+      }
     }
-    roots.forEach((root)=>applyTranslations(root));
+    roots.forEach((root)=>{
+      if(root && root.isConnected) applyTranslations(root);
+    });
   });
-  observer.observe(document.body,{subtree:true,childList:true,characterData:true});
+
+  if(document.body){
+    observer.observe(document.body,{subtree:true,childList:true,characterData:true});
+  }
 }
+
 export const applyI18n=applyTranslations;
-export function setLanguage(language){if(!dictionaries[language])return getLanguage();localStorage.setItem('lumera_lang',language);applyTranslations();return language;}
+
+export function setLanguage(language){
+  if(!dictionaries[language]) return getLanguage();
+  localStorage.setItem('lumera_lang',language);
+  applyTranslations();
+  return language;
+}
+
 export const app={initApp,applyI18n:applyTranslations,applyTranslations,setLanguage,getLanguage,t};
 
 if(typeof document!=='undefined'){
-  if(document.readyState==='loading')document.addEventListener('DOMContentLoaded',initApp,{once:true});
+  if(document.readyState==='loading') document.addEventListener('DOMContentLoaded',initApp,{once:true});
   else initApp();
 }
