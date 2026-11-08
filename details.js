@@ -1,64 +1,69 @@
 import { db } from './firebase.js';
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
+import { getLanguage, t } from './i18n.js';
 
-const urlParams = new URLSearchParams(window.location.search);
-const mediaId = urlParams.get('id');
+const params = new URLSearchParams(location.search);
+const mediaId = params.get('id');
+const language = getLanguage();
+const $ = (id) => document.getElementById(id);
 
-const userLang = localStorage.getItem('lumera_lang') || 'es';
+function localizedTitle(media) {
+  return media.i18n?.[language]?.title || media.title || t('untitled');
+}
+function typeLabel(type) {
+  if (type === 'movie') return t('movie');
+  return language === 'en' ? 'Series' : language === 'pt' ? 'Série' : language === 'fr' ? 'Série' : 'Serie';
+}
 
 async function loadMediaDetails() {
-  if (!mediaId) return window.location.href = 'home.html';
+  if (!mediaId) return location.replace('home.html');
+  try {
+    const snapshot = await getDoc(doc(db, 'content', mediaId));
+    if (!snapshot.exists()) return location.replace('home.html');
+    const media = snapshot.data();
+    const banner = media.images?.banner || media.images?.poster || '';
+    $('detailsHero').style.backgroundImage = banner ? `url("${banner.replace(/["\\]/g, '')}")` : '';
+    $('mediaTitle').textContent = localizedTitle(media);
+    $('mediaYear').textContent = media.year || '';
+    $('mediaAge').textContent = `${media.ageRating ?? 0}+`;
+    $('mediaType').textContent = typeLabel(media.type);
+    $('mediaSynopsis').textContent = media.i18n?.[language]?.synopsis || media.i18n?.es?.synopsis || media.synopsis || t('noDescription');
 
-  const docRef = doc(db, "content", mediaId);
-  const docSnap = await getDoc(docRef);
-
-  if (!docSnap.exists()) return window.location.href = 'home.html';
-
-  const media = docSnap.data();
-
-  // Cargar metadatos
-  document.getElementById('detailsHero').style.backgroundImage = `url('${media.images?.banner}')`;
-  document.getElementById('mediaTitle').textContent = media.title;
-  document.getElementById('mediaYear').textContent = media.year || '2026';
-  document.getElementById('mediaAge').textContent = `${media.ageRating}+`;
-  document.getElementById('mediaType').textContent = media.type === 'movie' ? 'Película' : 'Serie';
-  
-  // Descripción según i18n
-  const synopsis = media.i18n?.[userLang]?.synopsis || media.synopsis || "Sin descripción disponible.";
-  document.getElementById('mediaSynopsis').textContent = synopsis;
-
-  // Si es Película, botón directo a Play
-  if (media.type === 'movie') {
-    document.getElementById('episodesHeading').style.display = 'none';
-    document.getElementById('mainPlayBtn').onclick = () => {
-      window.location.href = `play.html?id=${mediaId}&type=movie`;
-    };
-  } else {
-    // Si es Serie, renderizar lista de episodios de la Temporada 1
-    renderEpisodes(media);
+    if (media.type === 'movie') {
+      $('episodesHeading').hidden = true;
+      $('mainPlayBtn').onclick = () => { location.href = `play.html?id=${encodeURIComponent(mediaId)}&type=movie`; };
+    } else {
+      $('mainPlayBtn').hidden = true;
+      renderEpisodes(media);
+    }
+  } catch (error) {
+    console.error('Could not load media details:', error);
+    $('mediaSynopsis').textContent = t('loadError');
   }
 }
 
 function renderEpisodes(media) {
-  const container = document.getElementById('episodesContainer');
-  container.innerHTML = '';
-
-  const season = media.seasons?.[0]; // Temporada 1 por defecto
-  if (!season || !season.episodes) return;
-
-  season.episodes.forEach((ep) => {
-    const div = document.createElement('div');
-    div.className = 'episode-card';
-    div.innerHTML = `
-      <div>
-        <strong>E${ep.episodeNumber}: ${ep.title}</strong>
-      </div>
-      <svg class="icon-svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-    `;
-    div.onclick = () => {
-      window.location.href = `play.html?id=${mediaId}&ep=${ep.episodeNumber}`;
-    };
-    container.appendChild(div);
+  const container = $('episodesContainer');
+  container.replaceChildren();
+  (media.seasons || []).forEach((season, seasonIndex) => {
+    const section = document.createElement('section');
+    section.className = 'details-season';
+    const heading = document.createElement('h3');
+    heading.textContent = season.i18n?.[language]?.title || season.title || `${t('season')} ${season.seasonNumber || seasonIndex + 1}`;
+    section.appendChild(heading);
+    (season.episodes || []).forEach((episode) => {
+      const button = document.createElement('button');
+      button.type = 'button';
+      button.className = 'episode-card';
+      const label = document.createElement('strong');
+      label.textContent = `E${episode.episodeNumber}: ${episode.i18n?.[language]?.title || episode.title || ''}`;
+      button.appendChild(label);
+      button.addEventListener('click', () => {
+        location.href = `play.html?id=${encodeURIComponent(mediaId)}&ep=${episode.episodeNumber}&season=${season.seasonNumber || seasonIndex + 1}`;
+      });
+      section.appendChild(button);
+    });
+    container.appendChild(section);
   });
 }
 
