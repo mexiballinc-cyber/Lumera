@@ -1,167 +1,163 @@
 import { db } from './firebase.js';
-import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
+import { doc, getDoc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 
 const urlParams = new URLSearchParams(window.location.search);
 const mediaId = urlParams.get('id');
-const episodeNum = urlParams.get('ep');
-const seasonNum = urlParams.get('season') || 1;
-const type = urlParams.get('type') || 'movie';
-const lang = localStorage.getItem('lumera_lang') || 'es';
+const epNum = parseInt(urlParams.get('ep') || '1');
+const currentLang = localStorage.getItem('lumera_lang') || 'es';
 
-const videoPlayer = document.getElementById('lumeraVideoPlayer');
-const backBtn = document.getElementById('backBtn');
-const mediaTitle = document.getElementById('mediaTitle');
-const mediaDesc = document.getElementById('mediaDescription');
-const subtitleSelect = document.getElementById('subtitleSelect');
+const player = document.getElementById('lumeraVideoPlayer');
+const titleEl = document.getElementById('playerTitle');
+const synopsisEl = document.getElementById('playerSynopsis');
 const audioSelect = document.getElementById('audioSelect');
+const subtitleSelect = document.getElementById('subtitleSelect');
 
-let hideTimeout;
+let hideControlsTimeout;
 
-// Manejo de visibilidad de controles por inactividad
-function resetControlsTimer() {
-  document.body.classList.remove('controls-hidden');
-  clearTimeout(hideTimeout);
-  hideTimeout = setTimeout(() => {
-    if (!videoPlayer.paused) {
-      document.body.classList.add('controls-hidden');
+// Manejo de inactividad del cursor para ocultar la UI
+function handleUserActivity() {
+  document.body.classList.remove('user-inactive');
+  clearTimeout(hideControlsTimeout);
+  hideControlsTimeout = setTimeout(() => {
+    if (!player.paused) {
+      document.body.classList.add('user-inactive');
     }
   }, 3000);
 }
 
-document.addEventListener('mousemove', resetControlsTimer);
-document.addEventListener('click', resetControlsTimer);
-document.addEventListener('touchstart', resetControlsTimer);
-videoPlayer.addEventListener('play', resetControlsTimer);
-videoPlayer.addEventListener('pause', () => document.body.classList.remove('controls-hidden'));
+document.addEventListener('mousemove', handleUserActivity);
+document.addEventListener('touchstart', handleUserActivity);
+player.addEventListener('play', handleUserActivity);
+player.addEventListener('pause', () => document.body.classList.remove('user-inactive'));
 
-backBtn.addEventListener('click', () => {
-  if (document.referrer.includes('details.html') || document.referrer.includes('home.html')) {
-    window.history.back();
-  } else {
-    window.location.href = mediaId ? `details.html?id=${encodeURIComponent(mediaId)}` : 'home.html';
-  }
-});
-
-// Carga de Subtítulos VTT sorteando CORS mediante Blob
-async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Subtítulos') {
-  const oldTracks = videoElement.querySelectorAll('track');
+// Función para evadir problemas CORS con subtítulos VTT de Archive.org
+async function setSubtitleTrack(vttUrl) {
+  const oldTracks = player.querySelectorAll('track');
   oldTracks.forEach(t => t.remove());
-  if (!subtitleUrl) return;
+
+  if (!vttUrl) return;
 
   try {
-    const response = await fetch(subtitleUrl);
-    if (!response.ok) throw new Error("No se pudo descargar el VTT");
-    const vttText = await response.text();
-    const blob = new Blob([vttText], { type: 'text/vtt' });
+    const res = await fetch(vttUrl);
+    if (!res.ok) throw new Error("VTT response not ok");
+    const blobText = await res.text();
+    const blob = new Blob([blobText], { type: 'text/vtt' });
+    
     const track = document.createElement('track');
     track.kind = 'subtitles';
-    track.label = langLabel;
+    track.label = 'Subtítulos';
     track.srclang = 'es';
     track.src = URL.createObjectURL(blob);
     track.default = true;
-    videoElement.appendChild(track);
-    if (videoElement.textTracks && videoElement.textTracks[0]) {
-      videoElement.textTracks[0].mode = 'showing';
+    
+    player.appendChild(track);
+    if (player.textTracks && player.textTracks[0]) {
+      player.textTracks[0].mode = 'showing';
     }
   } catch (err) {
-    console.error("Error al cargar subtítulos:", err);
+    console.error("Error al cargar subtítulo VTT:", err);
   }
-}
-
-// Extractor todoterreno de URLs de video
-function extractMediaUrl(targetObj, currentLang = 'es') {
-  if (!targetObj) return '';
-  if (typeof targetObj === 'string') return targetObj;
-  
-  if (typeof targetObj.sources === 'string') return targetObj.sources;
-  if (targetObj.sources && typeof targetObj.sources === 'object') {
-    const res = targetObj.sources[currentLang] || targetObj.sources.es || Object.values(targetObj.sources)[0];
-    if (res) return typeof res === 'string' ? res : res.url || res.video || '';
-  }
-  
-  return targetObj.videoUrl || targetObj.video || targetObj.url || targetObj.link || targetObj.videoLink || '';
-}
-
-// Extractor todoterreno de URLs de subtítulos
-function extractSubtitleUrl(targetObj, currentLang = 'es') {
-  if (!targetObj) return '';
-  if (typeof targetObj.subtitles === 'string') return targetObj.subtitles;
-  if (targetObj.subtitles && typeof targetObj.subtitles === 'object') {
-    const res = targetObj.subtitles[currentLang] || targetObj.subtitles.es || Object.values(targetObj.subtitles)[0];
-    if (res) return typeof res === 'string' ? res : res.url || '';
-  }
-  return targetObj.subLink || targetObj.subtitleUrl || targetObj.subtitlesUrl || '';
 }
 
 async function initPlayer() {
   if (!mediaId) return window.location.href = 'home.html';
-  
+
   try {
-    const docSnap = await getDoc(doc(db, "content", mediaId));
-    if (!docSnap.exists()) throw new Error("No existe el contenido en Firestore.");
-    
+    const docRef = doc(db, "content", mediaId);
+    const docSnap = await getDoc(docRef);
+
+    if (!docSnap.exists()) {
+      titleEl.textContent = "Contenido no encontrado";
+      return;
+    }
+
     const media = docSnap.data();
-    let videoSrc = '';
-    let subtitleSrc = '';
-    let title = media.i18n?.[lang]?.title || media.title || 'Sin título';
-    let desc = media.i18n?.[lang]?.synopsis || media.synopsis || '';
-
-    if (type === 'movie' || !episodeNum) {
-      videoSrc = extractMediaUrl(media, lang);
-      subtitleSrc = extractSubtitleUrl(media, lang);
-    } else {
-      // Búsqueda de episodios en Series
-      const seasons = media.seasons || [];
-      const season = seasons.find(s => String(s.seasonNumber) === String(seasonNum)) || seasons[0];
-      
-      if (season) {
-        const episodes = season.episodes || [];
-        const ep = episodes.find(e => String(e.episodeNumber) === String(episodeNum)) || episodes[0];
-        
-        if (ep) {
-          videoSrc = extractMediaUrl(ep, lang);
-          subtitleSrc = extractSubtitleUrl(ep, lang);
-          const epTitle = ep.i18n?.[lang]?.title || ep.title || `Episodio ${ep.episodeNumber}`;
-          title = `${title} - E${ep.episodeNumber}: ${epTitle}`;
-        }
-      }
-    }
-
-    if (!videoSrc) {
-      throw new Error("No se encontró ninguna URL de video válida asociada.");
-    }
-
-    // Carga de metadatos y fuente del video
-    mediaTitle.textContent = title;
-    mediaDesc.textContent = desc;
-    videoPlayer.src = videoSrc;
-
-    // Configurar selectores de UI
-    if (audioSelect) {
-      audioSelect.innerHTML = `<option value="default">Audio predeterminado</option>`;
-    }
+    let sources = {};
+    let subtitles = {};
     
-    if (subtitleSelect) {
-      subtitleSelect.innerHTML = `<option value="">Off</option>`;
-      if (subtitleSrc) {
-        subtitleSelect.innerHTML += `<option value="${subtitleSrc}" selected>Subtítulos Principales</option>`;
-        loadSubtitleTrack(videoPlayer, subtitleSrc);
+    titleEl.textContent = media.i18n?.[currentLang]?.title || media.title || 'Sin título';
+    synopsisEl.textContent = media.i18n?.[currentLang]?.synopsis || media.synopsis || '';
+
+    // Extracción flexible de video y subtítulos (soporta tanto cadenas como objetos)
+    if (media.type === 'movie') {
+      sources = media.sources || media.videoUrl || media.url || {};
+      subtitles = media.subtitles || media.subUrl || {};
+    } else {
+      const episode = media.seasons?.[0]?.episodes?.find(e => e.episodeNumber === epNum) || media.seasons?.[0]?.episodes?.[0];
+      if (episode) {
+        sources = episode.sources || episode.videoUrl || episode.url || {};
+        subtitles = episode.subtitles || episode.subUrl || {};
+        titleEl.textContent += ` - E${episode.episodeNumber}: ${episode.title || ''}`;
       }
-      subtitleSelect.addEventListener('change', (e) => {
-        if (e.target.value) loadSubtitleTrack(videoPlayer, e.target.value);
-        else videoPlayer.querySelectorAll('track').forEach(t => t.remove());
+    }
+
+    // Normalizar fuentes de video
+    audioSelect.innerHTML = '';
+    if (typeof sources === 'string') {
+      const opt = document.createElement('option');
+      opt.value = sources;
+      opt.textContent = "Principal";
+      audioSelect.appendChild(opt);
+    } else if (typeof sources === 'object' && sources !== null) {
+      Object.entries(sources).forEach(([langKey, url]) => {
+        if (url) {
+          const opt = document.createElement('option');
+          opt.value = url;
+          opt.textContent = langKey.toUpperCase();
+          audioSelect.appendChild(opt);
+        }
       });
     }
 
-    const tag = document.querySelector('.play-tag');
-    if (tag) tag.textContent = "AHORA VIENDO";
+    if (audioSelect.options.length > 0) {
+      player.src = audioSelect.value;
+      player.play().catch(() => {});
+    } else {
+      titleEl.textContent = "Error reproduciendo contenido";
+      synopsisEl.textContent = "No se encontró ninguna URL de video válida asociada.";
+      return;
+    }
 
-  } catch (err) {
-    console.error("Player Error:", err);
-    mediaTitle.textContent = "Error reproduciendo contenido";
-    mediaDesc.textContent = err.message;
-    const tag = document.querySelector('.play-tag');
-    if (tag) tag.textContent = "ERROR";
+    // Normalizar subtítulos
+    subtitleSelect.innerHTML = '<option value="">Desactivado</option>';
+    if (typeof subtitles === 'string' && subtitles) {
+      const opt = document.createElement('option');
+      opt.value = subtitles;
+      opt.textContent = "Español";
+      subtitleSelect.appendChild(opt);
+    } else if (typeof subtitles === 'object' && subtitles !== null) {
+      Object.entries(subtitles).forEach(([langKey, url]) => {
+        if (url) {
+          const opt = document.createElement('option');
+          opt.value = url;
+          opt.textContent = langKey.toUpperCase();
+          subtitleSelect.appendChild(opt);
+        }
+      });
+    }
+
+    // Eventos de selección
+    audioSelect.onchange = () => {
+      const currentTime = player.currentTime;
+      player.src = audioSelect.value;
+      player.currentTime = currentTime;
+      player.play();
+    };
+
+    subtitleSelect.onchange = () => {
+      setSubtitleTrack(subtitleSelect.value);
+    };
+
+    // Cargar subtítulo predeterminado si existe
+    if (subtitleSelect.options.length > 1) {
+      subtitleSelect.selectedIndex = 1;
+      setSubtitleTrack(subtitleSelect.value);
+    }
+
+  } catch (error) {
+    console.error("Error al inicializar el reproductor:", error);
+    titleEl.textContent = "Error de conexión";
+    synopsisEl.textContent = error.message;
   }
 }
 
