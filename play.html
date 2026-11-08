@@ -7,38 +7,95 @@
   <link rel="icon" type="image/png" href="https://i.imgur.com/cCqp6Qt.png">
   <link rel="stylesheet" href="style.css">
   <style>
-    body { background: #000; overflow: hidden; }
-    .video-container { position: relative; width: 100vw; height: 100vh; }
-    video { width: 100%; height: 100%; object-fit: contain; }
-    .player-controls {
-      position: absolute;
-      bottom: 0; left: 0; width: 100%;
-      padding: 20px;
-      background: linear-gradient(0deg, rgba(0,0,0,0.9) 0%, transparent 100%);
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      z-index: 10;
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #080808; color: #fff; font-family: system-ui, -apple-system, sans-serif; overflow: hidden; height: 100vh; }
+    
+    .player-shell { position: relative; width: 100vw; height: 100vh; background: #000; }
+    video { width: 100%; height: 100%; object-fit: contain; display: block; }
+
+    /* Topbar superior inspirada en el croquis */
+    .top-bar {
+      position: absolute; top: 0; left: 0; width: 100%; height: 70px;
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 0 24px; z-index: 20;
+      background: linear-gradient(180deg, rgba(0,0,0,0.85) 0%, transparent 100%);
+      transition: opacity 0.3s ease;
     }
-    .back-btn { position: absolute; top: 20px; left: 20px; z-index: 10; cursor: pointer; }
-    .selector-dropdown { background: #222; color: #fff; border: 1px solid #444; padding: 6px 12px; border-radius: 4px; }
+
+    .btn-icon-back {
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.2);
+      color: #fff; width: 42px; height: 42px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      cursor: pointer; backdrop-filter: blur(8px); transition: all 0.2s;
+    }
+    .btn-icon-back:hover { background: var(--accent-color, #d4af37); color: #000; border-color: var(--accent-color, #d4af37); }
+    .btn-icon-back svg { width: 22px; height: 22px; fill: currentColor; }
+
+    .brand-tag { display: flex; align-items: center; gap: 8px; font-weight: bold; font-size: 0.9rem; letter-spacing: 1px; color: var(--text-muted, #aaa); }
+    .brand-tag img { width: 20px; height: 20px; }
+
+    /* Controles inferiores limpios */
+    .bottom-controls {
+      position: absolute; bottom: 0; left: 0; width: 100%;
+      padding: 24px 30px; z-index: 20;
+      background: linear-gradient(0deg, rgba(0,0,0,0.95) 0%, rgba(0,0,0,0.4) 60%, transparent 100%);
+      display: flex; align-items: flex-end; justify-content: space-between; gap: 20px;
+      transition: opacity 0.3s ease;
+    }
+
+    .media-info { flex: 1; max-width: 60%; }
+    .media-info h1 { font-size: 1.8rem; font-weight: 700; margin-bottom: 6px; text-shadow: 0 2px 4px rgba(0,0,0,0.8); }
+    .media-info p { font-size: 0.95rem; color: #ccc; line-height: 1.4; display: -webkit-box; -webkit-line-clamp: 2; -webkit-box-orient: vertical; overflow: hidden; }
+
+    .control-selectors { display: flex; align-items: center; gap: 16px; background: rgba(20,20,20,0.7); padding: 12px 18px; border-radius: 12px; border: 1px solid rgba(255,255,255,0.1); backdrop-filter: blur(10px); }
+    .selector-group { display: flex; align-items: center; gap: 8px; font-size: 0.85rem; color: #aaa; text-transform: uppercase; letter-spacing: 0.5px; }
+    .selector-group svg { width: 18px; height: 18px; fill: var(--accent-color, #d4af37); }
+    
+    select.clean-dropdown {
+      background: #111; color: #fff; border: 1px solid #333;
+      padding: 8px 12px; border-radius: 6px; outline: none; font-size: 0.9rem; cursor: pointer;
+    }
+    select.clean-dropdown:focus { border-color: var(--accent-color, #d4af37); }
+
+    /* Ocultar controles automáticos */
+    body.user-inactive .top-bar,
+    body.user-inactive .bottom-controls { opacity: 0; pointer-events: none; }
   </style>
 </head>
 <body>
-  <div class="video-container">
-    <div class="back-btn" onclick="window.history.back()">
-      <svg class="icon-svg" viewBox="0 0 24 24" style="width:36px; height:36px;"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+  <div class="player-shell">
+    <div class="top-bar">
+      <button class="btn-icon-back" onclick="window.history.back()" aria-label="Volver">
+        <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
+      </button>
+      <div class="brand-tag">
+        <img src="https://i.imgur.com/cCqp6Qt.png" alt="Lumera">
+        <span>LUMERA PLAYER</span>
+      </div>
     </div>
-    
-    <video id="lumeraVideoPlayer" controls></video>
 
-    <div class="player-controls">
-      <div style="display:flex; gap:15px; align-items:center;">
-        <label>Audio / Doblaje:</label>
-        <select id="audioSelect" class="selector-dropdown"></select>
-        
-        <label>Subtítulos:</label>
-        <select id="subtitleSelect" class="selector-dropdown"></select>
+    <video id="lumeraVideoPlayer" controls autoplay playsinline></video>
+
+    <div class="bottom-controls">
+      <div class="media-info">
+        <h1 id="playerTitle">Cargando contenido...</h1>
+        <p id="playerSynopsis"></p>
+      </div>
+
+      <div class="control-selectors">
+        <!-- Audio / Doblaje con SVG -->
+        <div class="selector-group">
+          <svg viewBox="0 0 24 24"><path d="M3 9v6h4l5 5V4L7 9H3zm13.5 3c0-1.77-1.02-3.29-2.5-4.03v8.05c1.48-.73 2.5-2.25 2.5-4.02zM14 3.23v2.06c2.89.86 5 3.54 5 6.71s-2.11 5.85-5 6.71v2.06c4.01-.91 7-4.49 7-8.77s-2.99-7.86-7-8.77z"/></svg>
+          <select id="audioSelect" class="clean-dropdown"></select>
+        </div>
+
+        <!-- Subtítulos CC con SVG -->
+        <div class="selector-group">
+          <svg viewBox="0 0 24 24"><path d="M19 4H5c-1.11 0-2 .9-2 2v12c0 1.1.89 2 2 2h14c1.1 0 2-.9 2-2V6c0-1.1-.9-2-2-2zm-8 7H9.5v-.5h-2v3h2V13H11v1c0 .55-.45 1-1 1H7c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1zm7 0h-1.5v-.5h-2v3h2V13H18v1c0 .55-.45 1-1 1h-3c-.55 0-1-.45-1-1v-4c0-.55.45-1 1-1h3c.55 0 1 .45 1 1v1z"/></svg>
+          <select id="subtitleSelect" class="clean-dropdown">
+            <option value="">Desactivado</option>
+          </select>
+        </div>
       </div>
     </div>
   </div>
