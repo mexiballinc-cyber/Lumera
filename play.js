@@ -22,7 +22,7 @@ const audioSelect = document.getElementById('audioSelect');
 
 let hideTimeout;
 
-// Manejo de controles por inactividad
+// Ocultar controles cuando el cursor está inactivo durante la reproducción
 function resetControlsTimer() {
   document.body.classList.remove('controls-hidden');
   clearTimeout(hideTimeout);
@@ -36,25 +36,27 @@ function resetControlsTimer() {
 document.addEventListener('mousemove', resetControlsTimer);
 document.addEventListener('touchstart', resetControlsTimer);
 
-// Eventos de Reproducción
-playPauseBtn.addEventListener('click', () => {
-  if (videoPlayer.paused) videoPlayer.play();
-  else videoPlayer.pause();
-});
+// Alternar Play / Pausa
+if (playPauseBtn) {
+  playPauseBtn.addEventListener('click', () => {
+    if (videoPlayer.paused) videoPlayer.play();
+    else videoPlayer.pause();
+  });
+}
 
 videoPlayer.addEventListener('play', () => {
-  playIcon.style.display = 'none';
-  pauseIcon.style.display = 'block';
+  if (playIcon) playIcon.style.display = 'none';
+  if (pauseIcon) pauseIcon.style.display = 'block';
   resetControlsTimer();
 });
 
 videoPlayer.addEventListener('pause', () => {
-  playIcon.style.display = 'block';
-  pauseIcon.style.display = 'none';
+  if (playIcon) playIcon.style.display = 'block';
+  if (pauseIcon) pauseIcon.style.display = 'none';
   document.body.classList.remove('controls-hidden');
 });
 
-// Formatear Tiempo
+// Formato de tiempo (MM:SS)
 function formatTime(sec) {
   if (isNaN(sec)) return "00:00";
   const m = Math.floor(sec / 60);
@@ -62,25 +64,35 @@ function formatTime(sec) {
   return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
+// Actualizar la barra de progreso personalizada
 videoPlayer.addEventListener('timeupdate', () => {
   const pct = (videoPlayer.currentTime / videoPlayer.duration) * 100 || 0;
-  progressFill.style.width = `${pct}%`;
-  timeDisplay.textContent = `${formatTime(videoPlayer.currentTime)} / ${formatTime(videoPlayer.duration)}`;
+  if (progressFill) progressFill.style.width = `${pct}%`;
+  if (timeDisplay) timeDisplay.textContent = `${formatTime(videoPlayer.currentTime)} / ${formatTime(videoPlayer.duration)}`;
 });
 
-// Click en barra de progreso
-progressBar.addEventListener('click', (e) => {
-  const rect = progressBar.getBoundingClientRect();
-  const pos = (e.clientX - rect.left) / rect.width;
-  videoPlayer.currentTime = pos * videoPlayer.duration;
-});
+// Buscar punto de reproducción al hacer clic en la barra
+if (progressBar) {
+  progressBar.addEventListener('click', (e) => {
+    const rect = progressBar.getBoundingClientRect();
+    const pos = (e.clientX - rect.left) / rect.width;
+    videoPlayer.currentTime = pos * videoPlayer.duration;
+  });
+}
 
-backBtn.addEventListener('click', () => {
-  window.history.back();
-});
+// Botón de regresar
+if (backBtn) {
+  backBtn.addEventListener('click', () => {
+    if (document.referrer.includes('details.html') || document.referrer.includes('home.html')) {
+      window.history.back();
+    } else {
+      window.location.href = mediaId ? `details.html?id=${encodeURIComponent(mediaId)}` : 'home.html';
+    }
+  });
+}
 
-// Carga de subtítulos mediante Blob para evadir CORS y mostrar visualmente
-async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Subtítulos') {
+// Descargar subtítulos VTT vía Blob para evitar problemas de CORS en Firefox/Chrome
+async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Español') {
   const oldTracks = videoElement.querySelectorAll('track');
   oldTracks.forEach(t => t.remove());
 
@@ -110,27 +122,40 @@ async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Subtít
   }
 }
 
+// Extractor todoterreno de URL de video
 function extractUrl(obj) {
   if (!obj) return '';
   if (typeof obj === 'string') return obj;
   if (typeof obj.sources === 'string') return obj.sources;
-  if (obj.sources && typeof obj.sources === 'object') return obj.sources[lang] || obj.sources.es || Object.values(obj.sources)[0];
-  return obj.videoUrl || obj.url || obj.link || '';
+  if (obj.sources && typeof obj.sources === 'object') {
+    return obj.sources[lang] || obj.sources.es || Object.values(obj.sources)[0] || '';
+  }
+  return obj.videoUrl || obj.video || obj.url || obj.link || obj.videoLink || '';
 }
 
+// Extractor todoterreno de URL de subtítulos
 function extractSub(obj) {
   if (!obj) return '';
   if (typeof obj.subtitles === 'string') return obj.subtitles;
-  if (obj.subtitles && typeof obj.subtitles === 'object') return obj.subtitles[lang] || obj.subtitles.es || Object.values(obj.subtitles)[0];
-  return obj.subLink || obj.subtitleUrl || '';
+  if (obj.subtitles && typeof obj.subtitles === 'object') {
+    return obj.subtitles[lang] || obj.subtitles.es || Object.values(obj.subtitles)[0] || '';
+  }
+  return obj.subLink || obj.subtitleUrl || obj.subtitlesUrl || '';
 }
 
 async function initPlayer() {
-  if (!mediaId) return window.location.href = 'home.html';
+  // Redireccionar si no hay id de contenido en la URL
+  if (!mediaId) {
+    window.location.href = 'home.html';
+    return;
+  }
   
   try {
     const docSnap = await getDoc(doc(db, "content", mediaId));
-    if (!docSnap.exists()) throw new Error("Documento no encontrado.");
+    if (!docSnap.exists()) {
+      if (mediaTitle) mediaTitle.textContent = "Contenido no disponible";
+      return;
+    }
     
     const media = docSnap.data();
     let videoSrc = '';
@@ -148,32 +173,42 @@ async function initPlayer() {
         if (ep) {
           videoSrc = extractUrl(ep);
           subtitleSrc = extractSub(ep);
-          title = `${title} - E${ep.episodeNumber}`;
+          const epTitle = ep.i18n?.[lang]?.title || ep.title || `Episodio ${ep.episodeNumber}`;
+          title = `${title} - E${ep.episodeNumber}: ${epTitle}`;
         }
       }
     }
 
-    if (!videoSrc) throw new Error("URL de video no encontrada.");
-
-    mediaTitle.textContent = title;
-    videoPlayer.src = videoSrc;
-
-    audioSelect.innerHTML = `<option value="${videoSrc}">ES (Español)</option>`;
-    subtitleSelect.innerHTML = `<option value="">Off</option>`;
-
-    if (subtitleSrc) {
-      subtitleSelect.innerHTML += `<option value="${subtitleSrc}" selected>ES (Español)</option>`;
-      loadSubtitleTrack(videoPlayer, subtitleSrc);
+    if (!videoSrc) {
+      if (mediaTitle) mediaTitle.textContent = "URL de video no encontrada";
+      return;
     }
 
-    subtitleSelect.addEventListener('change', (e) => {
-      if (e.target.value) loadSubtitleTrack(videoPlayer, e.target.value);
-      else videoPlayer.querySelectorAll('track').forEach(t => t.remove());
-    });
+    if (mediaTitle) mediaTitle.textContent = title;
+    videoPlayer.src = videoSrc;
+
+    if (audioSelect) {
+      audioSelect.innerHTML = `<option value="${videoSrc}">ES (Español)</option>`;
+    }
+    
+    if (subtitleSelect) {
+      subtitleSelect.innerHTML = `<option value="">Off</option>`;
+      if (subtitleSrc) {
+        subtitleSelect.innerHTML += `<option value="${subtitleSrc}" selected>ES (Español)</option>`;
+        loadSubtitleTrack(videoPlayer, subtitleSrc);
+      }
+
+      subtitleSelect.addEventListener('change', (e) => {
+        if (e.target.value) loadSubtitleTrack(videoPlayer, e.target.value);
+        else videoPlayer.querySelectorAll('track').forEach(t => t.remove());
+      });
+    }
+
+    videoPlayer.play().catch(() => {});
 
   } catch (err) {
     console.error("Error al iniciar reproductor:", err);
-    mediaTitle.textContent = "Error al reproducir contenido";
+    if (mediaTitle) mediaTitle.textContent = "Error al reproducir contenido";
   }
 }
 
