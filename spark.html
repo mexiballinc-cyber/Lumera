@@ -2,110 +2,122 @@
 <html lang="es">
 <head>
   <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover">
+  <meta name="theme-color" content="#050505">
   <title>Lumera Sparks</title>
   <link rel="icon" type="image/png" href="https://i.imgur.com/cCqp6Qt.png">
   <link rel="stylesheet" href="style.css">
   <style>
-    body { background: #000; overflow: hidden; }
-    .sparks-container {
-      height: 100vh;
-      width: 100vw;
-      overflow-y: scroll;
-      scroll-snap-type: y mandatory;
-    }
-    .spark-card {
-      height: 100vh;
-      width: 100vw;
-      scroll-snap-align: start;
-      position: relative;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-    }
-    .spark-card video { width: 100%; height: 100%; object-fit: cover; }
-    .spark-overlay {
-      position: absolute;
-      bottom: 40px; right: 20px;
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: 20px;
-      z-index: 10;
-    }
-    .like-btn {
-      background: rgba(0,0,0,0.6);
-      border: 1px solid rgba(255,255,255,0.2);
-      border-radius: 50%;
-      width: 50px; height: 50px;
-      display: flex; align-items: center; justify-content: center;
-      color: #fff;
-    }
-    .like-btn.active { color: #ff0055; border-color: #ff0055; }
-    .spark-info {
-      position: absolute;
-      bottom: 40px; left: 20px;
-      z-index: 10;
-      max-width: 70%;
-    }
-    .spark-nav-back {
-      position: absolute; top: 20px; left: 20px; z-index: 20;
-    }
+    html,body{width:100%;height:100%;margin:0;background:#000;overflow:hidden}
+    .sparks-container{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;overscroll-behavior-y:contain;background:#000}
+    .spark-card{position:relative;width:100%;height:100vh;height:100dvh;scroll-snap-align:start;scroll-snap-stop:always;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#000}
+    .spark-card video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;background:#000}
+    .spark-info{position:absolute;z-index:2;left:clamp(16px,4vw,36px);bottom:max(28px,env(safe-area-inset-bottom));max-width:min(70%,620px);padding:14px 16px;border:1px solid rgba(255,255,255,.13);border-radius:16px;background:rgba(0,0,0,.42);backdrop-filter:blur(12px);color:#fff}
+    .spark-info h2{margin:0 0 5px;font-size:clamp(1.05rem,3vw,1.5rem)}.spark-info p{margin:0;color:rgba(255,255,255,.72)}
+    .spark-overlay{position:absolute;z-index:3;right:clamp(14px,4vw,34px);bottom:max(30px,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:12px}
+    .like-btn{width:48px;height:48px;border:1px solid rgba(255,255,255,.22);border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.55);color:#fff;cursor:pointer}.like-btn svg{width:24px;height:24px;fill:currentColor}.like-btn.active{color:#ff4778;border-color:#ff4778}
+    .spark-nav-back{position:fixed;z-index:10;top:max(14px,env(safe-area-inset-top));left:16px}.spark-nav-back a{width:46px;height:46px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.2);border-radius:14px;background:rgba(0,0,0,.58);backdrop-filter:blur(14px);color:#fff}.spark-nav-back svg{width:24px;height:24px;fill:currentColor}
+    .spark-state{position:fixed;inset:0;display:grid;place-items:center;padding:24px;color:#ddd;text-align:center;background:#080808}
+    @media(max-width:680px){.spark-card video{object-fit:contain}.spark-info{left:12px;bottom:calc(18px + env(safe-area-inset-bottom));max-width:calc(100% - 86px);padding:11px 12px}.spark-overlay{right:12px;bottom:calc(20px + env(safe-area-inset-bottom))}.spark-nav-back{left:12px}}
   </style>
 </head>
 <body>
-  <div class="spark-nav-back" onclick="window.location.href='home.html'">
-    <svg class="icon-svg" viewBox="0 0 24 24" style="width:36px; height:36px; cursor:pointer;"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20v-2z"/></svg>
-  </div>
-
-  <div id="sparksContainer" class="sparks-container"></div>
-
+  <nav class="spark-nav-back" aria-label="Volver"><a href="home.html" aria-label="Volver al inicio"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20z"/></svg></a></nav>
+  <main id="sparksContainer" class="sparks-container" aria-label="Lumera Sparks"></main>
   <script type="module">
     import { db } from './firebase.js';
-    import { collection, getDocs } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+    import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
 
-    async function loadSparks() {
-      const querySnapshot = await getDocs(collection(db, "sparks"));
-      const container = document.getElementById('sparksContainer');
-      container.innerHTML = '';
-
-      let likedCategories = JSON.parse(localStorage.getItem('lumera_spark_likes') || '{}');
-
-      let sparksList = [];
-      querySnapshot.forEach(doc => sparksList.push({ id: doc.id, ...doc.data() }));
-
-      // Algoritmo simple: Priorizar categorías con más likes
-      sparksList.sort((a, b) => (likedCategories[b.category] || 0) - (likedCategories[a.category] || 0));
-
-      sparksList.forEach(spark => {
-        const card = document.createElement('div');
-        card.className = 'spark-card';
-        card.innerHTML = `
-          <video src="${spark.videoUrl}" loop playsinline onclick="this.paused ? this.play() : this.pause()"></video>
-          <div class="spark-info">
-            <h3>@${spark.name}</h3>
-            <p style="color:var(--text-muted);">${spark.category || 'General'}</p>
-          </div>
-          <div class="spark-overlay">
-            <button class="like-btn" id="like-${spark.id}">
-              <svg class="icon-svg" viewBox="0 0 24 24"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>
-            </button>
-          </div>
-        `;
-        container.appendChild(card);
-
-        // Evento de Like
-        const btn = card.querySelector(`#like-${spark.id}`);
-        btn.onclick = () => {
-          btn.classList.toggle('active');
-          if (spark.category) {
-            likedCategories[spark.category] = (likedCategories[spark.category] || 0) + 1;
-            localStorage.setItem('lumera_spark_likes', JSON.stringify(likedCategories));
-          }
-        };
+    const container = document.getElementById('sparksContainer');
+    const language = localStorage.getItem('lumera_lang') || 'es';
+    let observer;
+    function stopAllExcept(activeVideo) {
+      container.querySelectorAll('video').forEach((video) => {
+        if (video === activeVideo) return;
+        video.pause();
+        video.currentTime = 0;
       });
     }
-
+    function activateCard(card) {
+      const video = card.querySelector('video');
+      if (!video) return;
+      stopAllExcept(video);
+      video.play().catch(() => { /* Wait for the next user gesture if autoplay is blocked. */ });
+    }
+    function createSpark(spark) {
+      const card = document.createElement('section');
+      card.className = 'spark-card';
+      const video = document.createElement('video');
+      video.src = spark.videoUrl || spark.url || spark.video || '';
+      video.loop = true;
+      video.muted = true;
+      video.playsInline = true;
+      video.preload = 'metadata';
+      video.setAttribute('aria-label', spark.name || 'Lumera Spark');
+      video.addEventListener('click', () => {
+        if (video.paused) { stopAllExcept(video); video.play().catch(() => {}); }
+        else video.pause();
+      });
+      const info = document.createElement('div');
+      info.className = 'spark-info';
+      const title = document.createElement('h2');
+      title.textContent = `@${spark.name || 'Lumera'}`;
+      const category = document.createElement('p');
+      category.textContent = spark.category || 'General';
+      info.append(title, category);
+      const overlay = document.createElement('div');
+      overlay.className = 'spark-overlay';
+      const like = document.createElement('button');
+      like.type = 'button';
+      like.className = 'like-btn';
+      like.setAttribute('aria-label', 'Me gusta');
+      like.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M12 21.35l-1.45-1.32C5.4 15.36 2 12.28 2 8.5 2 5.42 4.42 3 7.5 3c1.74 0 3.41.81 4.5 2.09C13.09 3.81 14.76 3 16.5 3 19.58 3 22 5.42 22 8.5c0 3.78-3.4 6.86-8.55 11.54L12 21.35z"/></svg>';
+      like.addEventListener('click', () => {
+        const liked = like.classList.toggle('active');
+        like.setAttribute('aria-pressed', String(liked));
+        try {
+          const likes = JSON.parse(localStorage.getItem('lumera_spark_likes') || '{}');
+          const key = spark.category || 'General';
+          likes[key] = Math.max(0, (likes[key] || 0) + (liked ? 1 : -1));
+          localStorage.setItem('lumera_spark_likes', JSON.stringify(likes));
+        } catch { /* Likes are an optional local preference. */ }
+      });
+      overlay.appendChild(like);
+      card.append(video, info, overlay);
+      return card;
+    }
+    async function loadSparks() {
+      try {
+        const snapshot = await getDocs(collection(db, 'sparks'));
+        const likes = JSON.parse(localStorage.getItem('lumera_spark_likes') || '{}');
+        const sparks = snapshot.docs.map((entry) => ({ id:entry.id, ...entry.data() }))
+          .sort((a,b) => (likes[b.category] || 0) - (likes[a.category] || 0));
+        if (!sparks.length) {
+          const empty = document.createElement('p'); empty.className = 'spark-state';
+          empty.textContent = language === 'en' ? 'No Sparks published yet.' : language === 'pt' ? 'Ainda não há Sparks publicados.' : language === 'fr' ? 'Aucun Spark publié pour le moment.' : 'Todavía no hay Sparks publicados.';
+          document.body.appendChild(empty); return;
+        }
+        const fragment = document.createDocumentFragment();
+        sparks.forEach((spark) => fragment.appendChild(createSpark(spark)));
+        container.replaceChildren(fragment);
+        observer = new IntersectionObserver((entries) => {
+          entries.forEach((entry) => {
+            if (entry.isIntersecting && entry.intersectionRatio >= 0.65) activateCard(entry.target);
+            else entry.target.querySelector('video')?.pause();
+          });
+        }, { root:container, threshold:[0,0.65,1] });
+        container.querySelectorAll('.spark-card').forEach((card) => observer.observe(card));
+        document.addEventListener('visibilitychange', () => {
+          if (document.hidden) stopAllExcept(null);
+          else { const active = [...container.querySelectorAll('.spark-card')].find((card) => { const rect = card.getBoundingClientRect(); return rect.top >= -10 && rect.top < innerHeight * 0.5; }); if (active) activateCard(active); }
+        });
+      } catch (error) {
+        console.error('Could not load Sparks:', error);
+        const state = document.createElement('p'); state.className = 'spark-state';
+        state.textContent = language === 'en' ? 'Could not load Sparks. Check the connection and Firestore access.' : language === 'pt' ? 'Não foi possível carregar Sparks. Verifique a conexão e o acesso ao Firestore.' : language === 'fr' ? 'Impossible de charger Sparks. Vérifiez la connexion et les accès Firestore.' : 'No se pudieron cargar los Sparks. Revisa la conexión y los permisos de Firestore.';
+        document.body.appendChild(state);
+      }
+    }
     loadSparks();
   </script>
 </body>
