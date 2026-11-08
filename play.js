@@ -80,6 +80,7 @@ if (backBtn) {
   });
 }
 
+// Carga segura de subtítulos con Proxy CORS y re-sincronización por delay de buffer
 async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Español') {
   const oldTracks = videoElement.querySelectorAll('track');
   oldTracks.forEach(t => t.remove());
@@ -119,13 +120,18 @@ async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Españo
 
     videoElement.appendChild(track);
     
-    setTimeout(() => {
+    const forceActivateTrack = () => {
       if (videoElement.textTracks && videoElement.textTracks.length > 0) {
         for (let i = 0; i < videoElement.textTracks.length; i++) {
           videoElement.textTracks[i].mode = 'showing';
         }
       }
-    }, 100);
+    };
+
+    forceActivateTrack();
+    videoElement.addEventListener('loadedmetadata', forceActivateTrack, { once: true });
+    videoElement.addEventListener('canplay', forceActivateTrack, { once: true });
+    videoElement.addEventListener('playing', forceActivateTrack, { once: true });
 
   } catch (err) {
     console.warn("Fallo el fetch de subtítulo, usando fallback de URL directa:", err);
