@@ -1,72 +1,148 @@
 import { db } from './firebase.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
-import { getLanguage, t } from './i18n.js';
 
-const params=new URLSearchParams(location.search);
-const mediaId=params.get('id');
-const episodeNumber=Number(params.get('ep')||1);
-const seasonNumber=Number(params.get('season')||1);
-const player=document.getElementById('lumeraVideoPlayer');
-const audioSelect=document.getElementById('audioSelect');
-const subtitleSelect=document.getElementById('subtitleSelect');
-const subtitleStatus=document.getElementById('subtitleStatus');
-const backButton=document.getElementById('backBtn');
-const language=getLanguage();
-const languageNames={es:'Español',en:'English',pt:'Português',fr:'Français'};
-let controlTimer;
-backButton?.addEventListener('click',()=>{player.pause();location.href=mediaId?`details.html?id=${encodeURIComponent(mediaId)}`:'home.html';});
-function showSubtitleStatus(message='',isError=false){if(!subtitleStatus)return;subtitleStatus.textContent=message;subtitleStatus.hidden=!message;subtitleStatus.classList.toggle('is-error',isError);}
-function populateSelect(select,values,includeOff=false){select.replaceChildren();if(includeOff){const option=document.createElement('option');option.value='';option.textContent=t('off');select.appendChild(option);}Object.entries(values||{}).filter(([,url])=>typeof url==='string'&&url.trim()).forEach(([code,url])=>{const option=document.createElement('option');option.value=url.trim();option.dataset.language=code;option.textContent=languageNames[code]||code.toUpperCase();select.appendChild(option);});}
-function normalizeLocalizedSources(value,defaultLanguage=language){
- if(typeof value==='string')return value.trim()?{[defaultLanguage]:value.trim()}:{};
- if(!value||typeof value!=='object')return{};
- const result={};for(const [key,item] of Object.entries(value)){if(typeof item==='string'&&item.trim())result[key.toLowerCase()]=item.trim();else if(item&&typeof item==='object'){const url=item.url||item.src||item.videoUrl||item.video||item.file;if(typeof url==='string'&&url.trim())result[key.toLowerCase()]=url.trim();}}
- return result;
+const urlParams = new URLSearchParams(window.location.search);
+const mediaId = urlParams.get('id');
+const episodeNum = urlParams.get('ep');
+const seasonNum = urlParams.get('season') || 1;
+const type = urlParams.get('type') || 'movie';
+const lang = localStorage.getItem('lumera_lang') || 'es';
+
+const videoPlayer = document.getElementById('lumeraVideoPlayer');
+const backBtn = document.getElementById('backBtn');
+const mediaTitle = document.getElementById('mediaTitle');
+const mediaDesc = document.getElementById('mediaDescription');
+const subtitleSelect = document.getElementById('subtitleSelect');
+const audioSelect = document.getElementById('audioSelect');
+
+let currentMedia = null;
+let hideTimeout;
+
+// Ocultar controles automáticos
+function resetControlsTimer() {
+  document.body.classList.remove('controls-hidden');
+  clearTimeout(hideTimeout);
+  hideTimeout = setTimeout(() => {
+    if (!videoPlayer.paused) {
+      document.body.classList.add('controls-hidden');
+    }
+  }, 3000);
 }
-function findSources(primary,record,locale){
- const direct=normalizeLocalizedSources(primary,locale);
- if(Object.keys(direct).length)return direct;
- for(const field of ['videoSources','sourcesByLanguage','videos','audioSources']){const result=normalizeLocalizedSources(record?.[field],locale);if(Object.keys(result).length)return result;}
- const single=record?.videoUrl||record?.video||record?.sourceUrl||record?.url;
- return typeof single==='string'&&single.trim()?{[locale]:single.trim()}:{};
-}
-function findSubtitles(primary,record,locale){
- const direct=normalizeLocalizedSources(primary,locale);if(Object.keys(direct).length)return direct;
- for(const field of ['subtitleSources','subtitlesByLanguage','captions']){const result=normalizeLocalizedSources(record?.[field],locale);if(Object.keys(result).length)return result;}
- const single=record?.subtitleUrl||record?.subtitle;
- return typeof single==='string'&&single.trim()?{[locale]:single.trim()}:{};
-}
-function clearLumeraTracks(){player.querySelectorAll('track[data-lumera-subtitle]').forEach((track)=>track.remove());for(const track of player.textTracks)track.mode='disabled';}
-function applySubtitles(url,code){clearLumeraTracks();showSubtitleStatus();if(!url)return;const track=document.createElement('track');track.dataset.lumeraSubtitle='true';track.kind='subtitles';track.src=url;track.srclang=code||language;track.label=languageNames[code]||code?.toUpperCase()||'Subtitles';track.default=true;track.addEventListener('load',()=>{if(track.track)track.track.mode='showing';showSubtitleStatus();});track.addEventListener('error',()=>{showSubtitleStatus(t('subtitleLoadError'),true);console.error('Subtitle load failed. Use a valid .vtt URL that allows cross-origin requests:',url);});player.appendChild(track);if(track.track)track.track.mode='showing';}
-function revealControls(){document.body.classList.remove('controls-hidden');clearTimeout(controlTimer);if(player.paused||document.activeElement===audioSelect||document.activeElement===subtitleSelect)return;controlTimer=setTimeout(()=>document.body.classList.add('controls-hidden'),3000);}
-function installAutoHide(){['pointermove','pointerdown','touchstart','keydown'].forEach((name)=>document.addEventListener(name,revealControls,{passive:true}));[audioSelect,subtitleSelect].forEach((select)=>{select.addEventListener('focus',()=>{clearTimeout(controlTimer);document.body.classList.remove('controls-hidden');});select.addEventListener('blur',revealControls);});player.addEventListener('play',revealControls);player.addEventListener('pause',()=>{clearTimeout(controlTimer);document.body.classList.remove('controls-hidden');});player.addEventListener('ended',()=>{clearTimeout(controlTimer);document.body.classList.remove('controls-hidden');});revealControls();}
-function reportVideoError(){const error=player.error;if(!error)return;const reasons={1:'Playback was aborted',2:'Network error while loading media',3:'Video decoding failed',4:'Video format or source is unsupported'};console.error('Video playback error:',reasons[error.code]||'Unknown media error',player.currentSrc);showSubtitleStatus(t('videoLoadError'),true);}
-player.addEventListener('error',reportVideoError);
-async function initPlayer(){
- if(!mediaId)return location.replace('home.html');
- try{
-  // Do not set crossOrigin=anonymous on the video element: many valid media hosts
-  // do not send CORS headers, and that setting prevents the video itself playing.
-  player.removeAttribute('crossorigin');
-  const snapshot=await getDoc(doc(db,'content',mediaId));if(!snapshot.exists())return location.replace('home.html');
-  const media=snapshot.data();let record=media;let sources=findSources(media.sources,media,language);let subtitles=findSubtitles(media.subtitles,media,language);
-  let title=media.i18n?.[language]?.title||media.i18n?.es?.title||media.title||'';let description=media.i18n?.[language]?.synopsis||media.i18n?.es?.synopsis||'';
-  if(media.type==='series'){
-   const season=(media.seasons||[]).find((item)=>Number(item.seasonNumber)===seasonNumber)||media.seasons?.[seasonNumber-1];
-   const episode=season?.episodes?.find((item)=>Number(item.episodeNumber)===episodeNumber);if(!episode)throw new Error(`Episode ${episodeNumber} in season ${seasonNumber} not found`);
-   record=episode;sources=findSources(episode.sources,episode,language);subtitles=findSubtitles(episode.subtitles,episode,language);
-   title=`${title} · ${episode.i18n?.[language]?.title||episode.i18n?.es?.title||episode.title||`${t('episode')} ${episodeNumber}`}`;
+
+document.addEventListener('mousemove', resetControlsTimer);
+document.addEventListener('click', resetControlsTimer);
+document.addEventListener('touchstart', resetControlsTimer);
+videoPlayer.addEventListener('play', resetControlsTimer);
+videoPlayer.addEventListener('pause', () => document.body.classList.remove('controls-hidden'));
+
+backBtn.addEventListener('click', () => {
+  if (document.referrer.includes('details.html') || document.referrer.includes('home.html')) {
+    window.history.back();
+  } else {
+    window.location.href = `details.html?id=${encodeURIComponent(mediaId)}`;
   }
-  document.getElementById('mediaTitle').textContent=title;document.getElementById('mediaDescription').textContent=description;
-  populateSelect(audioSelect,sources);populateSelect(subtitleSelect,subtitles,true);
-  const preferredAudio=[...audioSelect.options].find((option)=>option.dataset.language===language);if(preferredAudio)audioSelect.value=preferredAudio.value;
-  if(audioSelect.value){player.src=audioSelect.value;player.load();player.play().catch(()=>{showSubtitleStatus(t('autoplayHint'));});}
-  else{showSubtitleStatus(t('noVideoSource'),true);console.warn('No playback source found for media:',mediaId,record);}
-  const preferredSubtitle=[...subtitleSelect.options].find((option)=>option.dataset.language===language);if(preferredSubtitle)subtitleSelect.value=preferredSubtitle.value;
-  applySubtitles(subtitleSelect.value,subtitleSelect.selectedOptions[0]?.dataset.language);
-  audioSelect.addEventListener('change',()=>{if(!audioSelect.value)return;const time=player.currentTime;player.src=audioSelect.value;player.load();player.addEventListener('loadedmetadata',()=>{if(Number.isFinite(time))player.currentTime=Math.min(time,player.duration||time);},{once:true});player.play().catch(()=>showSubtitleStatus(t('autoplayHint')));});
-  subtitleSelect.addEventListener('change',()=>applySubtitles(subtitleSelect.value,subtitleSelect.selectedOptions[0]?.dataset.language));
-  installAutoHide();
- }catch(error){console.error('Could not initialize player:',error);document.getElementById('mediaTitle').textContent=t('playbackError');showSubtitleStatus(t('videoLoadError'),true);}
+});
+
+// Función salvavidas para Subtítulos cruzando dominios (.vtt de Archive)
+async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Subtítulos') {
+  const oldTracks = videoElement.querySelectorAll('track');
+  oldTracks.forEach(t => t.remove());
+
+  if (!subtitleUrl) return;
+
+  try {
+    const response = await fetch(subtitleUrl);
+    if (!response.ok) throw new Error("No se pudo descargar el archivo VTT");
+    
+    const vttText = await response.text();
+    const blob = new Blob([vttText], { type: 'text/vtt' });
+    const blobUrl = URL.createObjectURL(blob);
+
+    const track = document.createElement('track');
+    track.kind = 'subtitles';
+    track.label = langLabel;
+    track.srclang = 'es';
+    track.src = blobUrl;
+    track.default = true;
+
+    videoElement.appendChild(track);
+    
+    if (videoElement.textTracks && videoElement.textTracks[0]) {
+      videoElement.textTracks[0].mode = 'showing';
+    }
+    
+    const statusEl = document.getElementById('subtitleStatus');
+    if (statusEl) statusEl.hidden = true;
+  } catch (err) {
+    console.error("Error al cargar subtítulos:", err);
+    const statusEl = document.getElementById('subtitleStatus');
+    if (statusEl) {
+      statusEl.textContent = "Error al cargar subtítulos. Posible bloqueo de origen.";
+      statusEl.classList.add('is-error');
+      statusEl.hidden = false;
+    }
+  }
 }
+
+async function initPlayer() {
+  if (!mediaId) return window.location.href = 'home.html';
+  
+  try {
+    const docSnap = await getDoc(doc(db, "content", mediaId));
+    if (!docSnap.exists()) throw new Error("Media not found");
+    currentMedia = docSnap.data();
+
+    let videoSrc = '';
+    let subtitleSrc = '';
+    let title = currentMedia.title;
+    let desc = currentMedia.i18n?.[lang]?.synopsis || currentMedia.synopsis || '';
+
+    if (type === 'movie' || !episodeNum) {
+      videoSrc = currentMedia.sources?.[lang] || currentMedia.sources?.es || Object.values(currentMedia.sources || {})[0];
+      subtitleSrc = currentMedia.subtitles?.[lang] || currentMedia.subtitles?.es;
+    } else {
+      const season = currentMedia.seasons?.find(s => String(s.seasonNumber) === String(seasonNum)) || currentMedia.seasons?.[0];
+      if (season) {
+        const ep = season.episodes.find(e => String(e.episodeNumber) === String(episodeNum));
+        if (ep) {
+          videoSrc = ep.sources?.[lang] || ep.sources?.es || Object.values(ep.sources || {})[0];
+          subtitleSrc = ep.subtitles?.[lang] || ep.subtitles?.es || ep.subtitles?.[''] || '';
+          title = `${currentMedia.title} - E${ep.episodeNumber}: ${ep.title}`;
+        }
+      }
+    }
+
+    mediaTitle.textContent = title;
+    mediaDesc.textContent = desc;
+
+    if (videoSrc) {
+      videoPlayer.src = videoSrc;
+      audioSelect.innerHTML = `<option value="default">Audio predeterminado</option>`;
+      subtitleSelect.innerHTML = `<option value="">Off</option>`;
+      
+      if (subtitleSrc) {
+        subtitleSelect.innerHTML += `<option value="${subtitleSrc}" selected>Subtítulos Principales</option>`;
+        loadSubtitleTrack(videoPlayer, subtitleSrc);
+      }
+    } else {
+      throw new Error("No video source found");
+    }
+
+    subtitleSelect.addEventListener('change', (e) => {
+      const val = e.target.value;
+      if (val) {
+         loadSubtitleTrack(videoPlayer, val);
+      } else {
+         const oldTracks = videoPlayer.querySelectorAll('track');
+         oldTracks.forEach(t => t.remove());
+      }
+    });
+
+  } catch (err) {
+    console.error(err);
+    alert("Error cargando el reproductor.");
+    window.history.back();
+  }
+}
+
 initPlayer();
