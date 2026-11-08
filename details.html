@@ -3,59 +3,30 @@
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Lumera - Detalles</title>
+  <meta name="theme-color" content="#090909">
+  <title>Lumera — Detalles</title>
   <link rel="icon" type="image/png" href="https://i.imgur.com/cCqp6Qt.png">
   <link rel="stylesheet" href="style.css">
   <style>
-    .details-hero {
-      height: 60vh;
-      background-size: cover;
-      background-position: center;
-      position: relative;
-      display: flex;
-      align-items: flex-end;
-      padding: 40px;
-    }
-    .details-content { max-width: 700px; z-index: 2; }
-    .meta-tags { display: flex; gap: 15px; margin: 15px 0; color: var(--text-muted); }
-    .episodes-list { padding: 30px 40px; }
-    .episode-card {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 15px;
-      background: var(--bg-card);
-      margin-bottom: 10px;
-      border-radius: 6px;
-      cursor: pointer;
-    }
-    .episode-card:hover { border: 1px solid var(--accent-color); }
+    .details-page{min-height:100vh;background:radial-gradient(ellipse at 70% 0%,rgba(212,175,55,.09),transparent 40%),#080808}.details-topbar{position:absolute;z-index:5;top:18px;left:clamp(16px,4vw,48px)}.details-back{display:inline-flex;align-items:center;gap:9px;padding:11px 15px;border:1px solid rgba(255,255,255,.2);border-radius:999px;background:rgba(10,10,10,.62);backdrop-filter:blur(16px);color:#fff;text-decoration:none;font-weight:650;transition:.2s}.details-back:hover{border-color:var(--accent-color);transform:translateY(-1px)}.details-back svg{width:18px;height:18px;fill:currentColor}.details-hero{position:relative;isolation:isolate;min-height:min(76vh,760px);display:flex;align-items:flex-end;padding:clamp(24px,6vw,76px);padding-top:96px;background-color:#111;background-size:cover;background-position:center 30%;overflow:hidden}.details-hero::before{content:"";position:absolute;inset:0;z-index:-1;background:linear-gradient(90deg,rgba(0,0,0,.9),rgba(0,0,0,.5) 52%,rgba(0,0,0,.08)),linear-gradient(0deg,#080808 0%,transparent 55%)}.details-content{width:min(760px,100%);position:relative}.details-eyebrow{color:var(--accent-color);font-size:.76rem;letter-spacing:.18em;text-transform:uppercase;font-weight:750}.details-content h1{font-size:clamp(2.6rem,6.6vw,5.7rem);line-height:.98;letter-spacing:-.055em;margin:12px 0 0;text-wrap:balance}.meta-tags{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:20px 0;color:#ddd}.meta-tags span{padding:7px 11px;border:1px solid rgba(255,255,255,.16);border-radius:999px;background:rgba(10,10,10,.4);font-size:.9rem}.details-synopsis{max-width:660px;color:#dedbd4;font-size:clamp(1rem,1.5vw,1.12rem);line-height:1.75;margin:20px 0 26px}.details-actions{display:flex;align-items:center;gap:12px;flex-wrap:wrap}.details-episodes{max-width:1200px;margin:0 auto;padding:24px clamp(18px,5vw,60px) 70px}.details-episodes h2{font-size:1.8rem;margin:10px 0 20px}.details-season{margin:24px 0}.details-season h3{margin:0 0 12px;color:#e6dcb9}.episode-card{width:min(100%,700px);display:flex;align-items:center;justify-content:space-between;gap:14px;padding:16px 18px;margin:9px 0;text-align:left;background:rgba(255,255,255,.045);color:#fff;border:1px solid rgba(255,255,255,.12);border-radius:13px;cursor:pointer;transition:.18s}.episode-card:hover{border-color:var(--accent-color);background:rgba(212,175,55,.08);transform:translateX(3px)}.episode-card span{color:var(--accent-color);font-size:1.25rem}.details-state{padding:30px;color:#ddd}@media(max-width:600px){.details-hero{min-height:70vh;background-position:center;padding:24px;padding-top:100px}.details-hero::before{background:linear-gradient(0deg,#080808 0%,rgba(0,0,0,.5) 75%,rgba(0,0,0,.25)),linear-gradient(90deg,rgba(0,0,0,.4),transparent)}.details-content h1{font-size:clamp(2.4rem,12vw,4rem)}.details-synopsis{line-height:1.6}.details-episodes{padding:22px 18px 55px}}
   </style>
 </head>
-<body>
+<body class="details-page">
   <div class="bg-glow"></div>
-
-  <header id="detailsHero" class="details-hero">
-    <div class="hero-overlay"></div>
-    <div class="details-content">
-      <h1 id="mediaTitle" style="font-size: 3rem;">---</h1>
-      <div class="meta-tags">
-        <span id="mediaYear">2026</span>
-        <span id="mediaAge" style="border:1px solid #777; padding:0 4px;">13+</span>
-        <span id="mediaType">Serie</span>
+  <nav class="details-topbar" aria-label="Navegación"><a class="details-back" href="home.html" data-i18n="back"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M20 11H7.83l5.59-5.59L12 4l-1.42-1.41L2.17 12l4.24 4.24L12 21.83l1.41-1.42L7.83 14H20v-3z"/></svg>Volver</a></nav>
+  <main>
+    <header id="detailsHero" class="details-hero">
+      <div class="details-content">
+        <span class="details-eyebrow" id="detailsEyebrow">LUMERA · CONTENIDO</span>
+        <h1 id="mediaTitle">Cargando…</h1>
+        <div class="meta-tags"><span id="mediaYear"></span><span id="mediaAge"></span><span id="mediaType"></span></div>
+        <p id="mediaSynopsis" class="details-synopsis"></p>
+        <div class="details-actions"><button id="mainPlayBtn" class="hero-btn" type="button"><svg class="icon-svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg><span data-i18n="play">Reproducir</span></button></div>
       </div>
-      <p id="mediaSynopsis" style="line-height: 1.6; color: #ccc; margin-bottom: 20px;"></p>
-      <button id="mainPlayBtn" class="hero-btn" style="padding:14px 28px; font-size:16px;">
-        <svg class="icon-svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg> Reproducir
-      </button>
-    </div>
-  </header>
-
-  <section class="episodes-list">
-    <h2 id="episodesHeading" style="margin-bottom: 20px;">Episodios</h2>
-    <div id="episodesContainer"></div>
-  </section>
-
+    </header>
+    <section class="details-episodes" id="episodesSection" hidden><h2 id="episodesHeading" data-i18n="episodes">Episodios</h2><div id="episodesContainer"></div></section>
+    <p id="detailsError" class="details-state" role="status" hidden></p>
+  </main>
   <script type="module" src="details.js"></script>
 </body>
 </html>
