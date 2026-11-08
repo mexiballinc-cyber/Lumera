@@ -80,49 +80,52 @@ if (backBtn) {
   });
 }
 
-// Carga segura de subtítulos optimizada para Internet Archive (.vtt)
 async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Español') {
   const oldTracks = videoElement.querySelectorAll('track');
   oldTracks.forEach(t => t.remove());
 
   if (!subtitleUrl) return;
 
-  const cleanUrl = decodeURIComponent(subtitleUrl.trim());
+  const rawUrl = decodeURIComponent(subtitleUrl.trim());
+  const proxyUrl = `https://corsproxy.io/?${encodeURIComponent(rawUrl)}`;
 
   try {
-    const response = await fetch(cleanUrl, {
-      method: 'GET',
-      redirect: 'follow',
-      mode: 'cors'
-    });
+    let response = await fetch(proxyUrl);
+    
+    if (!response.ok) {
+      response = await fetch(rawUrl, {
+        method: 'GET',
+        redirect: 'follow',
+        mode: 'cors'
+      });
+    }
 
-    if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+    if (!response.ok) throw new Error("No VTT");
     
     let vttText = await response.text();
 
+    vttText = vttText.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     if (!vttText.trim().startsWith('WEBVTT')) {
-      vttText = 'WEBVTT\n\n' + vttText;
+      vttText = 'WEBVTT\n\n' + vttText.trim();
     }
 
     const blob = new Blob([vttText], { type: 'text/vtt;charset=utf-8' });
-    const blobUrl = URL.createObjectURL(blob);
-
     const track = document.createElement('track');
     track.kind = 'subtitles';
     track.label = langLabel;
     track.srclang = 'es';
-    track.src = blobUrl;
+    track.src = URL.createObjectURL(blob);
     track.default = true;
 
     videoElement.appendChild(track);
-
+    
     setTimeout(() => {
       if (videoElement.textTracks && videoElement.textTracks.length > 0) {
         for (let i = 0; i < videoElement.textTracks.length; i++) {
           videoElement.textTracks[i].mode = 'showing';
         }
       }
-    }, 200);
+    }, 100);
 
   } catch (err) {
     console.warn("Fallo el fetch de subtítulo, usando fallback de URL directa:", err);
@@ -131,7 +134,7 @@ async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Españo
     directTrack.kind = 'subtitles';
     directTrack.label = langLabel;
     directTrack.srclang = 'es';
-    directTrack.src = cleanUrl;
+    directTrack.src = rawUrl;
     directTrack.default = true;
     
     videoElement.appendChild(directTrack);
@@ -140,11 +143,11 @@ async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Españo
       if (videoElement.textTracks && videoElement.textTracks.length > 0) {
         videoElement.textTracks[0].mode = 'showing';
       }
-    }, 200);
+    }, 100);
   }
 }
 
-// Extractor compatible con los nombres del CMS (videoUrl / video / url / sources)
+// Extractor compatible con la nomenclatura del CMS (videoUrl / video / url / sources)
 function extractVideoUrlFromObj(obj) {
   if (!obj) return '';
   if (typeof obj === 'string') return obj;
@@ -192,7 +195,7 @@ async function initPlayer() {
     let subtitleSrc = '';
     let title = media.i18n?.[lang]?.title || media.title || 'Sin título';
 
-    // 1. Buscar dentro de temporadas y episodios (Series)
+    // 1. Revisar si hay temporadas/episodios (Estructura de Serie)
     const seasons = media.seasons || media.temporadas || [];
     if (seasons.length > 0) {
       const season = seasons.find(s => String(s.seasonNumber || s.number || 1) === String(seasonNum)) || seasons[0];
@@ -208,7 +211,7 @@ async function initPlayer() {
       }
     }
 
-    // 2. Si no hay episodios, buscar en la raíz del documento (Películas)
+    // 2. Si no encontró en episodios, buscar en el documento raíz (Película o fallback)
     if (!videoSrc) {
       videoSrc = extractVideoUrlFromObj(media);
       subtitleSrc = extractSubUrlFromObj(media) || subtitleSrc;
