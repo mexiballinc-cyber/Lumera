@@ -7,328 +7,46 @@
   <link rel="icon" type="image/png" href="https://i.imgur.com/cCqp6Qt.png" />
   <link rel="stylesheet" href="style.css" />
   <style>
-    :root {
-      --play-overlay: rgba(6, 6, 8, 0.68);
-      --play-border: rgba(255,255,255,0.12);
-    }
-
-    * { box-sizing: border-box; }
-    html, body {
-      margin: 0;
-      min-height: 100%;
-      background: #070707;
-      color: #f5f2ea;
-      font-family: "DM Sans", system-ui, sans-serif;
-    }
-    body.play-page {
-      overflow: hidden;
-      background: radial-gradient(circle at top, rgba(212,175,55,0.16), transparent 32%), #070707;
-    }
-
-    .play-shell {
-      position: relative;
-      width: 100vw;
-      height: 100vh;
-      overflow: hidden;
-      background: #000;
-    }
-
-    .play-video-wrap {
-      position: absolute;
-      inset: 0;
-      background: #000;
-    }
-
-    video {
-      width: 100%;
-      height: 100%;
-      object-fit: contain;
-      background: #000;
-      display: block;
-    }
-
-    .play-topbar {
-      position: absolute;
-      top: 0;
-      left: 0;
-      right: 0;
-      z-index: 20;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      padding: 20px 22px;
-      background: linear-gradient(180deg, rgba(0,0,0,0.75), rgba(0,0,0,0.05));
-    }
-
-    .play-back,
-    .play-pill,
-    .icon-btn {
-      border: 1px solid var(--play-border);
-      background: rgba(18,18,18,0.45);
-      backdrop-filter: blur(16px);
-      color: #f0ece4;
-      border-radius: 12px;
-      cursor: pointer;
-      transition: 0.2s ease;
-    }
-
-    .play-back {
-      width: 46px;
-      height: 46px;
-      display: grid;
-      place-items: center;
-    }
-
-    .play-back:hover,
-    .play-pill:hover,
-    .icon-btn:hover {
-      border-color: rgba(212,175,55,1);
-      box-shadow: 0 0 24px rgba(212,175,55,0.26);
-      transform: translateY(-1px);
-    }
-
-    .play-brand {
-      display: flex;
-      align-items: center;
-      gap: 10px;
-      font-weight: 700;
-      letter-spacing: 0.12em;
-      text-transform: uppercase;
-      color: #e7dfcd;
-      font-size: 0.72rem;
-    }
-
-    .play-brand img {
-      width: 22px;
-      height: 22px;
-      object-fit: contain;
-      display: block;
-    }
-
-    .play-panel {
-      position: absolute;
-      left: 24px;
-      right: 24px;
-      bottom: 24px;
-      z-index: 18;
-      display: flex;
-      align-items: end;
-      justify-content: space-between;
-      gap: 20px;
-      padding: 18px 18px 14px;
-      border-radius: 22px;
-      border: 1px solid var(--play-border);
-      background: linear-gradient(180deg, rgba(13,13,13,0.18), rgba(10,10,10,0.72));
-      backdrop-filter: blur(12px);
-    }
-
-    .play-meta {
-      flex: 1;
-      min-width: 0;
-    }
-
-    .play-tag {
-      display: inline-flex;
-      align-items: center;
-      gap: 8px;
-      padding: 6px 10px;
-      border-radius: 999px;
-      background: rgba(212,175,55,0.12);
-      border: 1px solid rgba(212,175,55,0.26);
-      color: #f0d98f;
-      font-size: 0.68rem;
-      letter-spacing: 0.14em;
-      text-transform: uppercase;
-      font-weight: 700;
-      margin-bottom: 12px;
-    }
-
-    .play-tag::before {
-      content: "";
-      width: 7px;
-      height: 7px;
-      border-radius: 50%;
-      background: #d4af37;
-      box-shadow: 0 0 14px rgba(212,175,55,0.8);
-      display: inline-block;
-    }
-
-    .play-title {
-      margin: 0 0 8px;
-      font-size: clamp(1.8rem, 3vw, 2.7rem);
-      line-height: 1.06;
-      font-weight: 800;
-      letter-spacing: -0.04em;
-    }
-
-    .play-description {
-      margin: 0;
-      max-width: 660px;
-      color: rgba(245,242,234,0.82);
-      font-size: 0.96rem;
-      line-height: 1.5;
-    }
-
-    .play-controls {
-      display: flex;
-      flex-direction: column;
-      gap: 12px;
-      min-width: 260px;
-    }
-
-    .play-select-group {
-      display: grid;
-      grid-template-columns: repeat(2, minmax(120px, 1fr));
-      gap: 10px;
-    }
-
-    .play-field {
-      display: flex;
-      flex-direction: column;
-      gap: 6px;
-      font-size: 0.72rem;
-      text-transform: uppercase;
-      letter-spacing: 0.12em;
-      color: rgba(245,242,234,0.72);
-    }
-
-    .selector-dropdown {
-      width: 100%;
-      min-height: 42px;
-      border-radius: 12px;
-      border: 1px solid rgba(255,255,255,0.12);
-      background: rgba(17,17,17,0.9);
-      color: #f5f2ea;
-      padding: 10px 12px;
-      outline: none;
-      font-weight: 600;
-      appearance: none;
-    }
-
-    .selector-dropdown:focus {
-      border-color: rgba(212,175,55,0.85);
-      box-shadow: 0 0 0 3px rgba(212,175,55,0.18);
-    }
-
-    .play-actions {
-      display: flex;
-      gap: 10px;
-      flex-wrap: wrap;
-      justify-content: flex-end;
-    }
-
-    .play-pill {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      gap: 8px;
-      min-height: 42px;
-      padding: 0 14px;
-      font-weight: 700;
-      font-size: 0.78rem;
-      letter-spacing: 0.08em;
-      text-transform: uppercase;
-    }
-
-    .play-pill.primary {
-      background: linear-gradient(135deg, rgba(212,175,55,0.95), rgba(240,217,139,0.9));
-      color: #120f08;
-      border-color: transparent;
-    }
-
-    .play-pill svg {
-      width: 18px;
-      height: 18px;
-      display: block;
-      stroke: currentColor;
-      fill: none;
-      stroke-width: 2;
-      stroke-linecap: round;
-      stroke-linejoin: round;
-    }
-
-    @media (max-width: 760px) {
-      .play-panel {
-        left: 14px;
-        right: 14px;
-        bottom: 14px;
-        flex-direction: column;
-        align-items: stretch;
-      }
-
-      .play-controls {
-        width: 100%;
-        min-width: 0;
-      }
-
-      .play-select-group {
-        grid-template-columns: 1fr 1fr;
-      }
-
-      .play-actions {
-        justify-content: stretch;
-      }
-
-      .play-pill {
-        flex: 1;
-      }
-    }
+    :root{--play-overlay:rgba(6,6,8,.68);--play-border:rgba(255,255,255,.12)}
+    *{box-sizing:border-box}html,body{margin:0;min-height:100%;background:#070707;color:#f5f2ea;font-family:"DM Sans",system-ui,sans-serif}body.play-page{overflow:hidden;background:radial-gradient(circle at top,rgba(212,175,55,.16),transparent 32%),#070707}
+    .play-shell{position:relative;width:100vw;height:100dvh;overflow:hidden;background:#000}.play-video-wrap{position:absolute;inset:0;background:#000}video{width:100%;height:100%;object-fit:contain;background:#000;display:block}
+    .play-topbar{position:absolute;top:0;left:0;right:0;z-index:20;display:flex;align-items:center;justify-content:space-between;padding:20px 22px;background:linear-gradient(180deg,rgba(0,0,0,.75),rgba(0,0,0,.05));transition:opacity .25s,transform .25s}
+    .play-back,.play-pill,.icon-btn{border:1px solid var(--play-border);background:rgba(18,18,18,.45);backdrop-filter:blur(16px);color:#f0ece4;border-radius:12px;cursor:pointer;transition:.2s ease}.play-back{width:46px;height:46px;display:grid;place-items:center}.play-back:hover,.play-pill:hover,.icon-btn:hover{border-color:#d4af37;box-shadow:0 0 24px rgba(212,175,55,.26);transform:translateY(-1px)}.play-back svg{width:22px;height:22px;fill:none;stroke:currentColor;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+    .play-brand{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.12em;text-transform:uppercase;color:#e7dfcd;font-size:.72rem}.play-brand img{width:22px;height:22px;object-fit:contain;display:block}
+    .play-panel{position:absolute;left:24px;right:24px;bottom:24px;z-index:18;display:flex;align-items:end;justify-content:space-between;gap:20px;padding:18px 18px 14px;border-radius:22px;border:1px solid var(--play-border);background:linear-gradient(180deg,rgba(13,13,13,.18),rgba(10,10,10,.78));backdrop-filter:blur(12px);transition:opacity .25s,transform .25s;opacity:1}
+    .play-meta{flex:1;min-width:0}.play-tag{display:inline-flex;align-items:center;gap:8px;padding:6px 10px;border-radius:999px;background:rgba(212,175,55,.12);border:1px solid rgba(212,175,55,.26);color:#f0d98f;font-size:.68rem;letter-spacing:.14em;text-transform:uppercase;font-weight:700;margin-bottom:12px}.play-tag:before{content:"";width:7px;height:7px;border-radius:50%;background:#d4af37;box-shadow:0 0 14px rgba(212,175,55,.8)}.play-title{margin:0 0 8px;font-size:clamp(1.8rem,3vw,2.7rem);line-height:1.06;font-weight:800;letter-spacing:-.04em}.play-description{margin:0;max-width:660px;color:rgba(245,242,234,.82);font-size:.96rem;line-height:1.5}
+    .play-controls{display:flex;flex-direction:column;gap:12px;min-width:260px}.play-select-group{display:grid;grid-template-columns:repeat(2,minmax(120px,1fr));gap:10px}.play-field{display:flex;flex-direction:column;gap:6px;font-size:.72rem;text-transform:uppercase;letter-spacing:.12em;color:rgba(245,242,234,.72)}.selector-dropdown{width:100%;min-height:42px;border-radius:12px;border:1px solid rgba(255,255,255,.12);background:rgba(17,17,17,.95);color:#f5f2ea;padding:10px 12px;outline:none;font-weight:600}.selector-dropdown:focus{border-color:rgba(212,175,55,.85);box-shadow:0 0 0 3px rgba(212,175,55,.18)}
+    .play-actions{display:flex;gap:10px;flex-wrap:wrap;justify-content:flex-end}.play-pill{display:inline-flex;align-items:center;justify-content:center;gap:8px;min-height:42px;padding:0 14px;font-weight:700;font-size:.78rem;letter-spacing:.08em;text-transform:uppercase}.play-pill.primary{background:linear-gradient(135deg,rgba(212,175,55,.95),rgba(240,217,139,.9));color:#120f08;border-color:transparent}.play-pill svg{width:18px;height:18px;display:block;stroke:currentColor;fill:none;stroke-width:2;stroke-linecap:round;stroke-linejoin:round}
+    .subtitle-status{position:absolute;z-index:25;left:50%;bottom:clamp(150px,22vh,230px);transform:translateX(-50%);max-width:calc(100vw - 32px);padding:10px 14px;border-radius:10px;background:rgba(25,25,25,.92);color:#f5f2ea;text-align:center;font-size:.9rem}.subtitle-status.is-error{color:#ffd2d2;border:1px solid rgba(255,100,100,.35)}
+    body.controls-hidden .play-panel,body.controls-hidden .play-topbar{opacity:0;pointer-events:none;transform:translateY(12px)}body.controls-hidden .play-topbar{transform:translateY(-12px)}body.controls-hidden .subtitle-status{opacity:0;transition:opacity .2s}
+    @media(max-width:760px){.play-panel{left:12px;right:12px;bottom:12px;flex-direction:column;align-items:stretch;gap:12px;padding:14px}.play-controls{width:100%;min-width:0}.play-select-group{grid-template-columns:1fr 1fr}.play-actions{justify-content:stretch}.play-pill{flex:1}.play-topbar{padding:14px}.subtitle-status{bottom:210px}}
+    @media(prefers-reduced-motion:reduce){.play-panel,.play-topbar{transition:none}}
   </style>
 </head>
 <body class="play-page">
   <div class="play-shell">
     <div class="play-video-wrap">
       <video id="lumeraVideoPlayer" controls autoplay playsinline></video>
-      <track id="lumeraTrack" kind="subtitles" srclang="es" label="Español" default />
     </div>
-
     <div class="play-topbar">
-      <button class="play-back" type="button" id="backBtn" aria-label="Volver">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
-      </button>
-
-      <div class="play-brand">
-        <img src="https://i.imgur.com/0QS9bH3.png" alt="Lumera" />
-        <span>Lumera</span>
-      </div>
+      <button class="play-back" type="button" id="backBtn" aria-label="Volver"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg></button>
+      <div class="play-brand"><img src="https://i.imgur.com/0QS9bH3.png" alt="Lumera" /><span>Lumera</span></div>
     </div>
-
     <div class="play-panel">
-      <div class="play-meta">
-        <div class="play-tag">Ahora viendo</div>
-        <h1 id="mediaTitle" class="play-title">Cargando...</h1>
-        <p id="mediaDescription" class="play-description">Preparando el contenido...</p>
-      </div>
-
+      <div class="play-meta"><div class="play-tag">Ahora viendo</div><h1 id="mediaTitle" class="play-title">Cargando...</h1><p id="mediaDescription" class="play-description">Preparando el contenido...</p></div>
       <div class="play-controls">
         <div class="play-select-group">
-          <label class="play-field">
-            <span>Audio</span>
-            <select id="audioSelect" class="selector-dropdown"></select>
-          </label>
-          <label class="play-field">
-            <span>Subtítulos</span>
-            <select id="subtitleSelect" class="selector-dropdown">
-              <option value="">Off</option>
-            </select>
-          </label>
+          <label class="play-field"><span>Audio</span><select id="audioSelect" class="selector-dropdown"></select></label>
+          <label class="play-field"><span>Subtítulos</span><select id="subtitleSelect" class="selector-dropdown"><option value="">Off</option></select></label>
         </div>
-
         <div class="play-actions">
-          <button id="prevEpisodeBtn" class="play-pill" type="button">
-            <svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg>
-            <span>Anterior</span>
-          </button>
-
-          <button id="nextEpisodeBtn" class="play-pill primary" type="button">
-            <span>Siguiente</span>
-            <svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg>
-          </button>
+          <button id="prevEpisodeBtn" class="play-pill" type="button"><svg viewBox="0 0 24 24"><path d="M15 18l-6-6 6-6"/></svg><span>Anterior</span></button>
+          <button id="nextEpisodeBtn" class="play-pill primary" type="button"><span>Siguiente</span><svg viewBox="0 0 24 24"><path d="M9 18l6-6-6-6"/></svg></button>
         </div>
       </div>
     </div>
+    <p id="subtitleStatus" class="subtitle-status" role="status" aria-live="polite" hidden></p>
   </div>
-
   <script type="module" src="play.js"></script>
 </body>
 </html>
