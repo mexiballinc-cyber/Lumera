@@ -1,163 +1,179 @@
 import { db } from './firebase.js';
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
 
 const urlParams = new URLSearchParams(window.location.search);
 const mediaId = urlParams.get('id');
-const epNum = parseInt(urlParams.get('ep') || '1');
-const currentLang = localStorage.getItem('lumera_lang') || 'es';
+const episodeNum = urlParams.get('ep');
+const seasonNum = urlParams.get('season') || 1;
+const type = urlParams.get('type') || 'movie';
+const lang = localStorage.getItem('lumera_lang') || 'es';
 
-const player = document.getElementById('lumeraVideoPlayer');
-const titleEl = document.getElementById('playerTitle');
-const synopsisEl = document.getElementById('playerSynopsis');
-const audioSelect = document.getElementById('audioSelect');
+const videoPlayer = document.getElementById('lumeraVideoPlayer');
+const backBtn = document.getElementById('backBtn');
+const mediaTitle = document.getElementById('mediaTitle');
+const playPauseBtn = document.getElementById('playPauseBtn');
+const playIcon = document.getElementById('playIcon');
+const pauseIcon = document.getElementById('pauseIcon');
+const progressBar = document.getElementById('progressBar');
+const progressFill = document.getElementById('progressFill');
+const timeDisplay = document.getElementById('timeDisplay');
 const subtitleSelect = document.getElementById('subtitleSelect');
+const audioSelect = document.getElementById('audioSelect');
 
-let hideControlsTimeout;
+let hideTimeout;
 
-// Manejo de inactividad del cursor para ocultar la UI
-function handleUserActivity() {
-  document.body.classList.remove('user-inactive');
-  clearTimeout(hideControlsTimeout);
-  hideControlsTimeout = setTimeout(() => {
-    if (!player.paused) {
-      document.body.classList.add('user-inactive');
+// Manejo de controles por inactividad
+function resetControlsTimer() {
+  document.body.classList.remove('controls-hidden');
+  clearTimeout(hideTimeout);
+  hideTimeout = setTimeout(() => {
+    if (!videoPlayer.paused) {
+      document.body.classList.add('controls-hidden');
     }
-  }, 3000);
+  }, 3500);
 }
 
-document.addEventListener('mousemove', handleUserActivity);
-document.addEventListener('touchstart', handleUserActivity);
-player.addEventListener('play', handleUserActivity);
-player.addEventListener('pause', () => document.body.classList.remove('user-inactive'));
+document.addEventListener('mousemove', resetControlsTimer);
+document.addEventListener('touchstart', resetControlsTimer);
 
-// Función para evadir problemas CORS con subtítulos VTT de Archive.org
-async function setSubtitleTrack(vttUrl) {
-  const oldTracks = player.querySelectorAll('track');
+// Eventos de Reproducción
+playPauseBtn.addEventListener('click', () => {
+  if (videoPlayer.paused) videoPlayer.play();
+  else videoPlayer.pause();
+});
+
+videoPlayer.addEventListener('play', () => {
+  playIcon.style.display = 'none';
+  pauseIcon.style.display = 'block';
+  resetControlsTimer();
+});
+
+videoPlayer.addEventListener('pause', () => {
+  playIcon.style.display = 'block';
+  pauseIcon.style.display = 'none';
+  document.body.classList.remove('controls-hidden');
+});
+
+// Formatear Tiempo
+function formatTime(sec) {
+  if (isNaN(sec)) return "00:00";
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+videoPlayer.addEventListener('timeupdate', () => {
+  const pct = (videoPlayer.currentTime / videoPlayer.duration) * 100 || 0;
+  progressFill.style.width = `${pct}%`;
+  timeDisplay.textContent = `${formatTime(videoPlayer.currentTime)} / ${formatTime(videoPlayer.duration)}`;
+});
+
+// Click en barra de progreso
+progressBar.addEventListener('click', (e) => {
+  const rect = progressBar.getBoundingClientRect();
+  const pos = (e.clientX - rect.left) / rect.width;
+  videoPlayer.currentTime = pos * videoPlayer.duration;
+});
+
+backBtn.addEventListener('click', () => {
+  window.history.back();
+});
+
+// Carga de subtítulos mediante Blob para evadir CORS y mostrar visualmente
+async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Subtítulos') {
+  const oldTracks = videoElement.querySelectorAll('track');
   oldTracks.forEach(t => t.remove());
 
-  if (!vttUrl) return;
+  if (!subtitleUrl) return;
 
   try {
-    const res = await fetch(vttUrl);
-    if (!res.ok) throw new Error("VTT response not ok");
-    const blobText = await res.text();
-    const blob = new Blob([blobText], { type: 'text/vtt' });
-    
+    const response = await fetch(subtitleUrl);
+    if (!response.ok) throw new Error("No se pudo descargar el VTT");
+    const vttText = await response.text();
+    const blob = new Blob([vttText], { type: 'text/vtt' });
     const track = document.createElement('track');
     track.kind = 'subtitles';
-    track.label = 'Subtítulos';
+    track.label = langLabel;
     track.srclang = 'es';
     track.src = URL.createObjectURL(blob);
     track.default = true;
+
+    videoElement.appendChild(track);
     
-    player.appendChild(track);
-    if (player.textTracks && player.textTracks[0]) {
-      player.textTracks[0].mode = 'showing';
-    }
+    setTimeout(() => {
+      if (videoElement.textTracks && videoElement.textTracks[0]) {
+        videoElement.textTracks[0].mode = 'showing';
+      }
+    }, 100);
   } catch (err) {
     console.error("Error al cargar subtítulo VTT:", err);
   }
 }
 
+function extractUrl(obj) {
+  if (!obj) return '';
+  if (typeof obj === 'string') return obj;
+  if (typeof obj.sources === 'string') return obj.sources;
+  if (obj.sources && typeof obj.sources === 'object') return obj.sources[lang] || obj.sources.es || Object.values(obj.sources)[0];
+  return obj.videoUrl || obj.url || obj.link || '';
+}
+
+function extractSub(obj) {
+  if (!obj) return '';
+  if (typeof obj.subtitles === 'string') return obj.subtitles;
+  if (obj.subtitles && typeof obj.subtitles === 'object') return obj.subtitles[lang] || obj.subtitles.es || Object.values(obj.subtitles)[0];
+  return obj.subLink || obj.subtitleUrl || '';
+}
+
 async function initPlayer() {
   if (!mediaId) return window.location.href = 'home.html';
-
+  
   try {
-    const docRef = doc(db, "content", mediaId);
-    const docSnap = await getDoc(docRef);
-
-    if (!docSnap.exists()) {
-      titleEl.textContent = "Contenido no encontrado";
-      return;
-    }
-
-    const media = docSnap.data();
-    let sources = {};
-    let subtitles = {};
+    const docSnap = await getDoc(doc(db, "content", mediaId));
+    if (!docSnap.exists()) throw new Error("Documento no encontrado.");
     
-    titleEl.textContent = media.i18n?.[currentLang]?.title || media.title || 'Sin título';
-    synopsisEl.textContent = media.i18n?.[currentLang]?.synopsis || media.synopsis || '';
+    const media = docSnap.data();
+    let videoSrc = '';
+    let subtitleSrc = '';
+    let title = media.i18n?.[lang]?.title || media.title || 'Sin título';
 
-    // Extracción flexible de video y subtítulos (soporta tanto cadenas como objetos)
-    if (media.type === 'movie') {
-      sources = media.sources || media.videoUrl || media.url || {};
-      subtitles = media.subtitles || media.subUrl || {};
+    if (type === 'movie' || !episodeNum) {
+      videoSrc = extractUrl(media);
+      subtitleSrc = extractSub(media);
     } else {
-      const episode = media.seasons?.[0]?.episodes?.find(e => e.episodeNumber === epNum) || media.seasons?.[0]?.episodes?.[0];
-      if (episode) {
-        sources = episode.sources || episode.videoUrl || episode.url || {};
-        subtitles = episode.subtitles || episode.subUrl || {};
-        titleEl.textContent += ` - E${episode.episodeNumber}: ${episode.title || ''}`;
+      const seasons = media.seasons || [];
+      const season = seasons.find(s => String(s.seasonNumber) === String(seasonNum)) || seasons[0];
+      if (season) {
+        const ep = (season.episodes || []).find(e => String(e.episodeNumber) === String(episodeNum)) || season.episodes?.[0];
+        if (ep) {
+          videoSrc = extractUrl(ep);
+          subtitleSrc = extractSub(ep);
+          title = `${title} - E${ep.episodeNumber}`;
+        }
       }
     }
 
-    // Normalizar fuentes de video
-    audioSelect.innerHTML = '';
-    if (typeof sources === 'string') {
-      const opt = document.createElement('option');
-      opt.value = sources;
-      opt.textContent = "Principal";
-      audioSelect.appendChild(opt);
-    } else if (typeof sources === 'object' && sources !== null) {
-      Object.entries(sources).forEach(([langKey, url]) => {
-        if (url) {
-          const opt = document.createElement('option');
-          opt.value = url;
-          opt.textContent = langKey.toUpperCase();
-          audioSelect.appendChild(opt);
-        }
-      });
+    if (!videoSrc) throw new Error("URL de video no encontrada.");
+
+    mediaTitle.textContent = title;
+    videoPlayer.src = videoSrc;
+
+    audioSelect.innerHTML = `<option value="${videoSrc}">ES (Español)</option>`;
+    subtitleSelect.innerHTML = `<option value="">Off</option>`;
+
+    if (subtitleSrc) {
+      subtitleSelect.innerHTML += `<option value="${subtitleSrc}" selected>ES (Español)</option>`;
+      loadSubtitleTrack(videoPlayer, subtitleSrc);
     }
 
-    if (audioSelect.options.length > 0) {
-      player.src = audioSelect.value;
-      player.play().catch(() => {});
-    } else {
-      titleEl.textContent = "Error reproduciendo contenido";
-      synopsisEl.textContent = "No se encontró ninguna URL de video válida asociada.";
-      return;
-    }
+    subtitleSelect.addEventListener('change', (e) => {
+      if (e.target.value) loadSubtitleTrack(videoPlayer, e.target.value);
+      else videoPlayer.querySelectorAll('track').forEach(t => t.remove());
+    });
 
-    // Normalizar subtítulos
-    subtitleSelect.innerHTML = '<option value="">Desactivado</option>';
-    if (typeof subtitles === 'string' && subtitles) {
-      const opt = document.createElement('option');
-      opt.value = subtitles;
-      opt.textContent = "Español";
-      subtitleSelect.appendChild(opt);
-    } else if (typeof subtitles === 'object' && subtitles !== null) {
-      Object.entries(subtitles).forEach(([langKey, url]) => {
-        if (url) {
-          const opt = document.createElement('option');
-          opt.value = url;
-          opt.textContent = langKey.toUpperCase();
-          subtitleSelect.appendChild(opt);
-        }
-      });
-    }
-
-    // Eventos de selección
-    audioSelect.onchange = () => {
-      const currentTime = player.currentTime;
-      player.src = audioSelect.value;
-      player.currentTime = currentTime;
-      player.play();
-    };
-
-    subtitleSelect.onchange = () => {
-      setSubtitleTrack(subtitleSelect.value);
-    };
-
-    // Cargar subtítulo predeterminado si existe
-    if (subtitleSelect.options.length > 1) {
-      subtitleSelect.selectedIndex = 1;
-      setSubtitleTrack(subtitleSelect.value);
-    }
-
-  } catch (error) {
-    console.error("Error al inicializar el reproductor:", error);
-    titleEl.textContent = "Error de conexión";
-    synopsisEl.textContent = error.message;
+  } catch (err) {
+    console.error("Error al iniciar reproductor:", err);
+    mediaTitle.textContent = "Error al reproducir contenido";
   }
 }
 
