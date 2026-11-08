@@ -28,6 +28,7 @@ function showAuthMessage(message = '') {
   authMessage.hidden = !message;
   authMessage.style.display = message ? 'block' : 'none';
 }
+
 function showSignedInView(user) {
   currentUser = user;
   localStorage.setItem('lumera_session', user.uid);
@@ -36,10 +37,17 @@ function showSignedInView(user) {
   document.querySelector('.auth-content')?.classList.add('profiles-only');
   profilesSection.style.display = 'block';
   profilesSection.hidden = false;
+
+  // Auto-scroll a la selección de perfiles en PC
+  setTimeout(() => {
+    profilesSection.scrollIntoView({ behavior: 'smooth', block: 'center' });
+  }, 150);
+
   const isAdmin = Boolean(user.email && user.email.toLowerCase() === ADMIN_EMAIL.toLowerCase());
   headerAdminBtn.style.display = isAdmin ? 'flex' : 'none';
   setupHeaderTools(isAdmin);
 }
+
 function setAuthMode(registering) {
   isRegisterMode = registering;
   authTitle.textContent = registering ? 'Crear cuenta' : 'Iniciar sesión';
@@ -48,6 +56,7 @@ function setAuthMode(registering) {
   authPassword.autocomplete = registering ? 'new-password' : 'current-password';
   showAuthMessage();
 }
+
 function getAuthErrorMessage(error) {
   const messages = {
     'auth/email-already-in-use': 'Ese correo ya tiene una cuenta. Cambia a Iniciar sesión.',
@@ -104,6 +113,7 @@ function setupHeaderTools(isAdmin = Boolean(currentUser?.email?.toLowerCase() ==
   }
   searchButton.addEventListener('click', () => { dialog.showModal(); $('authSearchQuery').focus(); renderAuthSearchResults(); });
 }
+
 async function renderAuthSearchResults() {
   const results = $('authSearchResults');
   if (!results) return;
@@ -154,6 +164,7 @@ authForm.addEventListener('submit', async (event) => {
   } catch (error) { console.error('Error de autenticación:', error); showAuthMessage(getAuthErrorMessage(error)); }
   finally { isSubmitting = false; authSubmitBtn.disabled = false; authToggle.disabled = false; authSubmitBtn.textContent = isRegisterMode ? 'Crear cuenta' : 'Entrar'; }
 });
+
 authToggle.addEventListener('click', () => setAuthMode(!isRegisterMode));
 
 function showProfileLoadError() {
@@ -161,6 +172,7 @@ function showProfileLoadError() {
   const message = document.createElement('p'); message.className = 'profile-load-error';
   message.textContent = 'Sesión iniciada, pero Firestore no permitió cargar perfiles. Revisa sus reglas y vuelve a cargar.'; profilesGrid.appendChild(message);
 }
+
 async function loadUserProfiles() {
   if (!currentUser) return;
   if (profileLoadPromise) return profileLoadPromise;
@@ -173,6 +185,7 @@ async function loadUserProfiles() {
   })();
   try { await profileLoadPromise; } finally { profileLoadPromise = null; }
 }
+
 function renderProfiles(profiles) {
   profilesGrid.replaceChildren();
   profiles.forEach((profile, index) => {
@@ -189,21 +202,26 @@ function renderProfiles(profiles) {
   });
   const addCard = document.createElement('div'); addCard.className='profile-card'; addCard.innerHTML='<div class="add-profile-circle">+</div><div class="profile-name">Añadir</div>'; addCard.addEventListener('click', () => window.openAddProfileModal()); profilesGrid.appendChild(addCard);
 }
+
 window.toggleEditProfiles = async () => { isEditingProfiles = !isEditingProfiles; await loadUserProfiles(); };
+
 async function editProfile(index, profiles) {
   const name = prompt('Nuevo nombre para el perfil:', profiles[index]?.name || ''); if (name === null) return;
   if (!name.trim()) return alert('El nombre del perfil no puede estar vacío.');
   profiles[index] = { ...profiles[index], name:name.trim() }; await persistProfiles(profiles);
 }
+
 async function deleteProfile(index, profiles) {
   if (profiles.length <= 1) return alert('Debe quedar al menos un perfil.');
   if (!confirm(`¿Eliminar el perfil “${profiles[index].name}”?`)) return;
   profiles.splice(index, 1); await persistProfiles(profiles);
 }
+
 async function persistProfiles(profiles) {
   try { await updateDoc(doc(db, 'users', currentUser.uid), { profiles }); renderProfiles(profiles); }
   catch (error) { console.error(error); alert('No se pudo guardar el cambio. Revisa los permisos de Firestore.'); }
 }
+
 window.openAddProfileModal = async () => {
   $('addProfileModal').style.display='flex'; const container=$('avatarPickerContainer'); container.textContent='Cargando avatares…'; selectedAvatarUrl=DEFAULT_AVATAR;
   try {
@@ -211,13 +229,16 @@ window.openAddProfileModal = async () => {
     snapshot.forEach((entry) => { const data=entry.data(); if(!data.url)return; const img=document.createElement('img'); img.src=data.url; img.alt='Avatar disponible'; img.className='avatar-option'; img.addEventListener('click',()=>{ container.querySelectorAll('.avatar-option').forEach((item)=>item.classList.remove('selected')); img.classList.add('selected'); selectedAvatarUrl=data.url; }); container.appendChild(img); });
   } catch(error) { console.error(error); container.textContent='No se pudieron cargar los avatares; se usará el avatar predeterminado.'; }
 };
+
 window.closeProfileModal=()=>{ $('addProfileModal').style.display='none'; };
+
 window.saveNewProfile=async()=>{
   const name=$('newProfName').value.trim(); const isKids=$('newProfKids').checked;
   if(!name)return alert('Por favor asigna un nombre al perfil.'); if(!currentUser)return alert('Inicia sesión para crear un perfil.');
   try { const ref=doc(db,'users',currentUser.uid); const snap=await getDoc(ref); const profiles=snap.exists()?(snap.data().profiles||[]):[]; profiles.push({name,isKids,avatar:selectedAvatarUrl}); await setDoc(ref,{email:currentUser.email,profiles},{merge:true}); $('newProfName').value=''; $('newProfKids').checked=false; closeProfileModal(); renderProfiles(profiles); }
   catch(error) { console.error(error); alert('No se pudo guardar el perfil. Revisa los permisos de Firestore.'); }
 };
+
 window.logoutUser=()=>signOut(auth);
 window.openSettings=()=>$('settingsModal').style.display='flex';
 window.closeSettingsModal=()=>$('settingsModal').style.display='none';
