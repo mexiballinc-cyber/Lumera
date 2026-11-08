@@ -80,16 +80,24 @@ if (backBtn) {
   });
 }
 
-// Carga segura de subtítulos vía Blob con forzado de modo showing
+// Carga segura de subtítulos optimizada para Internet Archive (.vtt)
 async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Español') {
   const oldTracks = videoElement.querySelectorAll('track');
   oldTracks.forEach(t => t.remove());
 
   if (!subtitleUrl) return;
 
+  const cleanUrl = decodeURIComponent(subtitleUrl.trim());
+
   try {
-    const response = await fetch(subtitleUrl);
-    if (!response.ok) throw new Error("No se pudo descargar el VTT");
+    const response = await fetch(cleanUrl, {
+      method: 'GET',
+      redirect: 'follow',
+      mode: 'cors'
+    });
+
+    if (!response.ok) throw new Error(`HTTP Error: ${response.status}`);
+    
     let vttText = await response.text();
 
     if (!vttText.trim().startsWith('WEBVTT')) {
@@ -97,27 +105,46 @@ async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Españo
     }
 
     const blob = new Blob([vttText], { type: 'text/vtt;charset=utf-8' });
+    const blobUrl = URL.createObjectURL(blob);
+
     const track = document.createElement('track');
     track.kind = 'subtitles';
     track.label = langLabel;
     track.srclang = 'es';
-    track.src = URL.createObjectURL(blob);
+    track.src = blobUrl;
     track.default = true;
 
     videoElement.appendChild(track);
-    
+
     setTimeout(() => {
       if (videoElement.textTracks && videoElement.textTracks.length > 0) {
         for (let i = 0; i < videoElement.textTracks.length; i++) {
           videoElement.textTracks[i].mode = 'showing';
         }
       }
-    }, 150);
+    }, 200);
+
   } catch (err) {
-    console.error("Error al cargar subtítulos VTT:", err);
+    console.warn("Fallo el fetch de subtítulo, usando fallback de URL directa:", err);
+    
+    const directTrack = document.createElement('track');
+    directTrack.kind = 'subtitles';
+    directTrack.label = langLabel;
+    directTrack.srclang = 'es';
+    directTrack.src = cleanUrl;
+    directTrack.default = true;
+    
+    videoElement.appendChild(directTrack);
+
+    setTimeout(() => {
+      if (videoElement.textTracks && videoElement.textTracks.length > 0) {
+        videoElement.textTracks[0].mode = 'showing';
+      }
+    }, 200);
   }
 }
 
+// Extractor compatible con los nombres del CMS (videoUrl / video / url / sources)
 function extractVideoUrlFromObj(obj) {
   if (!obj) return '';
   if (typeof obj === 'string') return obj;
@@ -165,6 +192,7 @@ async function initPlayer() {
     let subtitleSrc = '';
     let title = media.i18n?.[lang]?.title || media.title || 'Sin título';
 
+    // 1. Buscar dentro de temporadas y episodios (Series)
     const seasons = media.seasons || media.temporadas || [];
     if (seasons.length > 0) {
       const season = seasons.find(s => String(s.seasonNumber || s.number || 1) === String(seasonNum)) || seasons[0];
@@ -180,6 +208,7 @@ async function initPlayer() {
       }
     }
 
+    // 2. Si no hay episodios, buscar en la raíz del documento (Películas)
     if (!videoSrc) {
       videoSrc = extractVideoUrlFromObj(media);
       subtitleSrc = extractSubUrlFromObj(media) || subtitleSrc;
