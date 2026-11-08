@@ -10,9 +10,16 @@ const player = document.getElementById('lumeraVideoPlayer');
 const audioSelect = document.getElementById('audioSelect');
 const subtitleSelect = document.getElementById('subtitleSelect');
 const subtitleStatus = document.getElementById('subtitleStatus');
+const backButton = document.getElementById('backBtn');
 const language = getLanguage();
 const languageNames = { es:'Español', en:'English', pt:'Português', fr:'Français' };
 let controlTimer;
+
+// Always return to this title's details, including when the player was opened directly.
+backButton?.addEventListener('click', () => {
+  player.pause();
+  location.href = mediaId ? `details.html?id=${encodeURIComponent(mediaId)}` : 'home.html';
+});
 
 function populateSelect(select, values, includeOff = false) {
   select.replaceChildren();
