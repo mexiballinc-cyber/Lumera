@@ -11,20 +11,20 @@
     html, body { width: 100%; height: 100%; background: #000; overflow: hidden; font-family: "DM Sans", system-ui, sans-serif; }
     
     .play-shell { position: relative; width: 100vw; height: 100vh; background: #000; }
-    /* Le quitamos controles nativos y estiramos el video */
     video { width: 100%; height: 100%; object-fit: contain; background: #000; display: block; }
 
-    /* Estilo para los subtítulos (evita que se oculten) */
+    /* Forzar visualización correcta de subtítulos */
     video::cue {
-      background: rgba(0, 0, 0, 0.75);
-      color: #fff;
-      font-size: 1.1rem;
-      font-weight: 600;
-      border-radius: 6px;
-      padding: 4px 8px;
+      background: rgba(0, 0, 0, 0.8) !important;
+      color: #ffffff !important;
+      font-family: "DM Sans", system-ui, sans-serif !important;
+      font-size: 1.15rem !important;
+      font-weight: 600 !important;
+      border-radius: 6px !important;
+      padding: 4px 10px !important;
+      text-shadow: 0 2px 4px rgba(0,0,0,0.9) !important;
     }
 
-    /* Topbar Liquid Glass */
     .play-topbar {
       position: absolute; top: 0; left: 0; right: 0; z-index: 25;
       display: flex; align-items: center; justify-content: space-between;
@@ -44,7 +44,6 @@
     .play-brand { display: flex; align-items: center; gap: 8px; font-size: 0.75rem; font-weight: 700; letter-spacing: 0.15em; color: rgba(255,255,255,0.7); text-transform: uppercase; }
     .play-brand img { width: 20px; height: 20px; }
 
-    /* Panel de Control Inferior Liquid Glass */
     .play-controls-panel {
       position: absolute; bottom: 0; left: 0; right: 0; z-index: 25;
       padding: 24px 32px 28px;
@@ -53,7 +52,6 @@
       transition: opacity 0.3s ease, transform 0.3s ease;
     }
 
-    /* Barra de Progreso Personalizada */
     .progress-bar-wrap { position: relative; width: 100%; height: 6px; background: rgba(255,255,255,0.2); border-radius: 999px; cursor: pointer; transition: height 0.15s ease; }
     .progress-bar-wrap:hover { height: 10px; }
     .progress-fill { height: 100%; width: 0%; background: var(--accent-color, #d4af37); border-radius: 999px; position: relative; }
@@ -85,7 +83,6 @@
     .glass-select-wrap select { background: transparent; color: #fff; border: none; outline: none; font-size: 0.82rem; font-weight: 600; cursor: pointer; }
     .glass-select-wrap select option { background: #141416; color: #fff; }
 
-    /* Ocultar UI cuando el usuario está inactivo */
     body.controls-hidden .play-topbar,
     body.controls-hidden .play-controls-panel { opacity: 0; pointer-events: none; transform: translateY(8px); }
     body.controls-hidden .play-topbar { transform: translateY(-8px); }
@@ -106,7 +103,6 @@
     </header>
 
     <div class="play-controls-panel">
-      <!-- Barra de progreso personalizada superior -->
       <div class="progress-bar-wrap" id="progressBar">
         <div class="progress-fill" id="progressFill">
           <div class="progress-handle"></div>
