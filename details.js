@@ -1,65 +1,81 @@
 import { db } from './firebase.js';
-import { doc, getDoc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
+import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
+import { getLanguage, t, applyTranslations } from './i18n.js';
 
-const urlParams = new URLSearchParams(window.location.search);
-const mediaId = urlParams.get('id');
+const params = new URLSearchParams(location.search);
+const mediaId = params.get('id');
+const language = getLanguage();
+const $ = (id) => document.getElementById(id);
+const TYPE_LABELS = {
+  es: { movie:'Película', series:'Serie' }, en:{ movie:'Movie', series:'Series' },
+  pt:{ movie:'Filme', series:'Série' }, fr:{ movie:'Film', series:'Série' }
+};
 
-const userLang = localStorage.getItem('lumera_lang') || 'es';
+function textFor(item, key) {
+  return item.i18n?.[language]?.[key] || item.i18n?.es?.[key] || item[key] || '';
+}
+function showError(message) {
+  $('detailsError').textContent = message;
+  $('detailsError').hidden = false;
+  $('mediaTitle').textContent = t('detailsUnavailable');
+}
 
 async function loadMediaDetails() {
-  if (!mediaId) return window.location.href = 'home.html';
+  applyTranslations();
+  if (!mediaId) return showError(t('missingMedia'));
+  try {
+    const snapshot = await getDoc(doc(db, 'content', mediaId));
+    if (!snapshot.exists()) return showError(t('missingMedia'));
+    const media = snapshot.data();
+    const banner = media.images?.banner || media.banner || media.images?.poster || media.poster || '';
+    if (banner) $('detailsHero').style.backgroundImage = `url("${banner.replace(/["\\]/g, '')}")`;
+    $('mediaTitle').textContent = textFor(media, 'title') || t('untitled');
+    $('mediaYear').textContent = media.year || '';
+    $('mediaAge').textContent = media.ageRating ? `${media.ageRating}+` : '';
+    $('mediaType').textContent = TYPE_LABELS[language]?.[media.type] || media.type || '';
+    $('mediaSynopsis').textContent = textFor(media, 'synopsis') || t('noDescription');
+    document.title = `${$('mediaTitle').textContent} — Lumera`;
 
-  const docRef = doc(db, "content", mediaId);
-  const docSnap = await getDoc(docRef);
-
-  if (!docSnap.exists()) return window.location.href = 'home.html';
-
-  const media = docSnap.data();
-
-  // Cargar metadatos
-  document.getElementById('detailsHero').style.backgroundImage = `url('${media.images?.banner}')`;
-  document.getElementById('mediaTitle').textContent = media.title;
-  document.getElementById('mediaYear').textContent = media.year || '2026';
-  document.getElementById('mediaAge').textContent = `${media.ageRating}+`;
-  document.getElementById('mediaType').textContent = media.type === 'movie' ? 'Película' : 'Serie';
-  
-  // Descripción según i18n
-  const synopsis = media.i18n?.[userLang]?.synopsis || media.synopsis || "Sin descripción disponible.";
-  document.getElementById('mediaSynopsis').textContent = synopsis;
-
-  // Si es Película, botón directo a Play
-  if (media.type === 'movie') {
-    document.getElementById('episodesHeading').style.display = 'none';
-    document.getElementById('mainPlayBtn').onclick = () => {
-      window.location.href = `play.html?id=${mediaId}&type=movie`;
-    };
-  } else {
-    // Si es Serie, renderizar lista de episodios de la Temporada 1
-    renderEpisodes(media);
+    if (media.type === 'movie') {
+      $('mainPlayBtn').addEventListener('click', () => { location.href = `play.html?id=${encodeURIComponent(mediaId)}&type=movie`; });
+      $('episodesSection').hidden = true;
+    } else {
+      $('mainPlayBtn').hidden = true;
+      $('episodesSection').hidden = false;
+      renderEpisodes(media);
+    }
+  } catch (error) {
+    console.error('Could not load media details:', error);
+    showError(t('detailsLoadError'));
   }
 }
 
 function renderEpisodes(media) {
-  const container = document.getElementById('episodesContainer');
-  container.innerHTML = '';
-
-  const season = media.seasons?.[0]; // Temporada 1 por defecto
-  if (!season || !season.episodes) return;
-
-  season.episodes.forEach((ep) => {
-    const div = document.createElement('div');
-    div.className = 'episode-card';
-    div.innerHTML = `
-      <div>
-        <strong>E${ep.episodeNumber}: ${ep.title}</strong>
-      </div>
-      <svg class="icon-svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
-    `;
-    div.onclick = () => {
-      window.location.href = `play.html?id=${mediaId}&ep=${ep.episodeNumber}`;
-    };
-    container.appendChild(div);
+  const container = $('episodesContainer');
+  container.replaceChildren();
+  (media.seasons || []).forEach((season, seasonIndex) => {
+    const section = document.createElement('section');
+    section.className = 'details-season';
+    const heading = document.createElement('h3');
+    heading.textContent = season.i18n?.[language]?.title || season.i18n?.es?.title || season.title || `${t('season')} ${season.seasonNumber || seasonIndex + 1}`;
+    section.appendChild(heading);
+    (season.episodes || []).forEach((episode) => {
+      const button = document.createElement('button');
+      button.type = 'button'; button.className = 'episode-card';
+      const label = document.createElement('strong');
+      label.textContent = `E${episode.episodeNumber}: ${episode.i18n?.[language]?.title || episode.i18n?.es?.title || episode.title || ''}`;
+      const play = document.createElement('span'); play.setAttribute('aria-hidden', 'true'); play.textContent = '▶';
+      button.append(label, play);
+      button.addEventListener('click', () => {
+        location.href = `play.html?id=${encodeURIComponent(mediaId)}&ep=${episode.episodeNumber}&season=${season.seasonNumber || seasonIndex + 1}`;
+      });
+      section.appendChild(button);
+    });
+    container.appendChild(section);
   });
+  if (!container.childElementCount) {
+    const empty = document.createElement('p'); empty.className = 'details-state'; empty.textContent = t('noEpisodes'); container.appendChild(empty);
+  }
 }
 
 loadMediaDetails();
