@@ -10,15 +10,6 @@ const profile = JSON.parse(localStorage.getItem('lumera_active_profile') || 'nul
 
 let mediaItems = [], heroItems = [], activeFilter = localStorage.getItem('lumera_active_filter') || 'all', heroIndex = 0, heroTimer;
 
-const TEXT = {
-  es: { home:'Inicio', movie:'Películas', series:'Series', kids:'Kids', signIn:'Iniciar sesión', explore:'Explora el catálogo', noContent:'Tu catálogo te espera', empty:'Cuando se publique contenido, aparecerá aquí.', filterHint:'Prueba con otra sección o ajusta los filtros.', discoverLumera:'Descubre Lumera', discoverSub:'Películas y series para disfrutar a tu manera.', family:'UN ESPACIO PARA TODA LA FAMILIA', selection:'SELECCIÓN LUMERA', typeMovie:'Película', typeSeries:'Serie', titleOne:'título', titleMany:'títulos', content:'Contenido', catalogError:'No se pudo conectar con el catálogo.' },
-  en: { home:'Home', movie:'Movies', series:'Series', kids:'Kids', signIn:'Sign in', explore:'Explore the catalog', noContent:'Your catalog is waiting', empty:'Published titles will appear here.', filterHint:'Try another section or adjust the filters.', discoverLumera:'Discover Lumera', discoverSub:'Movies and series to enjoy your way.', family:'A SPACE FOR THE WHOLE FAMILY', selection:'LUMERA PICKS', typeMovie:'Movie', typeSeries:'Series', titleOne:'title', titleMany:'titles', content:'Content', catalogError:'Could not connect to the catalog.' },
-  pt: { home:'Início', movie:'Filmes', series:'Séries', kids:'Kids', signIn:'Entrar', explore:'Explore o catálogo', noContent:'Seu catálogo está esperando', empty:'Os títulos publicados aparecerão aqui.', filterHint:'Tente outra seção ou ajuste os filtros.', discoverLumera:'Descubra Lumera', discoverSub:'Filmes e séries para aproveitar do seu jeito.', family:'UM ESPAÇO PARA TODA A FAMÍLIA', selection:'SELEÇÃO LUMERA', typeMovie:'Filme', typeSeries:'Série', titleOne:'título', titleMany:'títulos', content:'Conteúdo', catalogError:'Não foi possível conectar ao catálogo.' },
-  fr: { home:'Accueil', movie:'Films', series:'Séries', kids:'Kids', signIn:'Se connecter', explore:'Explorer le catalogue', noContent:'Votre catalogue vous attend', empty:'Les titres publiés apparaîtront ici.', filterHint:'Essayez une autre section ou modifiez les filtres.', discoverLumera:'Découvrez Lumera', discoverSub:'Films et séries à apprécier comme vous voulez.', family:'UN ESPACE POUR TOUTE LA FAMILLE', selection:'SÉLECTION LUMERA', typeMovie:'Film', typeSeries:'Série', titleOne:'titre', titleMany:'titres', content:'Contenu', catalogError:'Impossible de se connecter au catalogue.' }
-};
-
-const words = () => TEXT[lang()] || TEXT.es;
-
 function setTheme(color) {
   const safe = /^#[\da-f]{6}$/i.test(color) ? color : '#d4af37';
   document.documentElement.style.setProperty('--accent-color', safe);
@@ -30,21 +21,21 @@ setTheme(localStorage.getItem('lumera_accent_color') || '#d4af37');
 if ($('languageSelect')) $('languageSelect').value = lang();
 applyTranslations();
 
-if ($('accountLabel')) $('accountLabel').textContent = profile?.name || words().signIn;
+if ($('accountLabel')) $('accountLabel').textContent = profile?.name || t('signIn');
 if (profile?.avatar && $('accountLink')) $('accountLink').querySelector('.account-avatar').innerHTML = `<img src="${String(profile.avatar).replace(/[&<>"']/g,'')}" alt="">`;
 
 onAuthStateChanged(auth, (user) => {
   if ($('adminOpen')) $('adminOpen').hidden = user?.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase();
-  if (user && !profile && $('accountLabel')) $('accountLabel').textContent = user.displayName || user.email || words().signIn;
+  if (user && !profile && $('accountLabel')) $('accountLabel').textContent = user.displayName || user.email || t('signIn');
 });
 
 function escapeAttr(value = '') { return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
 function localized(item, key) { const selected = lang(); return item.i18n?.[selected]?.[key] || item.i18n?.es?.[key] || item[key] || ''; }
 function posterOf(item) { return item.images?.poster || item.poster || ''; }
 function synopsisOf(item) { return localized(item, 'synopsis'); }
-function titleOf(item) { return localized(item, 'title') || item.title || words().content; }
+function titleOf(item) { return localized(item, 'title') || item.title || t('discoverLumera'); }
 function inKids(item) { return Number(item.ageRating ?? item.age ?? 99) <= 10; }
-function prettyType(item) { return item.type === 'series' ? words().typeSeries : words().typeMovie; }
+function prettyType(item) { return item.type === 'series' ? t('series') : t('movie'); }
 
 function filteredItems() {
   return mediaItems.filter((item) => {
@@ -89,17 +80,17 @@ function renderRow(id, items, compact = false) {
 }
 
 function renderCatalog() {
-  const items = filteredItems(), w = words();
-  if ($('sectionTitle')) $('sectionTitle').textContent = activeFilter === 'movie' ? w.movie : activeFilter === 'series' ? w.series : activeFilter === 'kids' ? w.kids : w.explore;
-  if ($('catalogCount')) $('catalogCount').textContent = `${items.length} ${items.length === 1 ? w.titleOne : w.titleMany}`;
+  const items = filteredItems();
+  if ($('sectionTitle')) $('sectionTitle').textContent = activeFilter === 'movie' ? t('movie') : activeFilter === 'series' ? t('series') : activeFilter === 'kids' ? t('kids') : t('explore');
+  if ($('catalogCount')) $('catalogCount').textContent = `${items.length} ${t('results')}`;
   renderRow('mainCatalogRow', items);
   
   if ($('emptyState')) $('emptyState').hidden = items.length > 0;
-  if ($('emptyTitle')) $('emptyTitle').textContent = w.noContent;
-  if ($('emptyMessage')) $('emptyMessage').textContent = mediaItems.length ? w.filterHint : w.empty;
+  if ($('emptyTitle')) $('emptyTitle').textContent = t('catalogEmpty');
+  if ($('emptyMessage')) $('emptyMessage').textContent = mediaItems.length ? t('tryOtherFilters') : t('catalogConnectedEmpty');
   if ($('catalogStatus')) $('catalogStatus').hidden = true;
   if ($('mainCatalogRow')) $('mainCatalogRow').hidden = items.length === 0;
-  if ($('catalogKicker')) $('catalogKicker').textContent = activeFilter === 'kids' ? w.family : w.selection;
+  if ($('catalogKicker')) $('catalogKicker').textContent = activeFilter === 'kids' ? t('kids') : t('catalogKicker');
   
   document.querySelectorAll('[data-filter]').forEach((button) => button.classList.toggle('active', button.dataset.filter === activeFilter));
   if (activeFilter === 'all') renderContinueAndNew();
@@ -130,11 +121,16 @@ function showHero(item, index = 0) {
   const banner = item.images?.banner || item.banner || item.url || posterOf(item);
   if ($('heroImage')) $('heroImage').style.backgroundImage = banner ? `url("${String(banner).replace(/["\\]/g, '')}")` : 'none';
   
-  // TRADUCCIÓN AUTOMÁTICA DEL HERO SIN TEXTO VIEJO
-  if ($('heroTitle')) $('heroTitle').textContent = titleOf(item) || words().discoverLumera;
-  if ($('heroDescription')) $('heroDescription').textContent = synopsisOf(item) || words().discoverSub;
+  if ($('heroTitle')) $('heroTitle').textContent = titleOf(item) || t('discoverLumera');
+  if ($('heroDescription')) $('heroDescription').textContent = synopsisOf(item) || t('discoverSub');
   if ($('heroMeta')) $('heroMeta').textContent = [item.year, item.ageRating != null ? `${item.ageRating}+` : '', item.type ? prettyType(item) : ''].filter(Boolean).join(' · ');
-  if ($('heroPlayBtn')) $('heroPlayBtn').onclick = () => { if (item.id) location.href = `details.html?id=${encodeURIComponent(item.id)}`; };
+  
+  // Ocultamos el botón "View details" estático si existía
+  if ($('heroViewDetailsBtn')) $('heroViewDetailsBtn').style.display = 'none';
+
+  if ($('heroPlayBtn')) {
+    $('heroPlayBtn').onclick = () => { if (item.id) location.href = `details.html?id=${encodeURIComponent(item.id)}`; };
+  }
   
   if ($('heroPagination')) {
     $('heroPagination').replaceChildren();
