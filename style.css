@@ -32,6 +32,32 @@ button { color: inherit; }
 svg { display: block; width: 21px; height: 21px; fill: none; stroke: currentColor; stroke-width: 1.7; stroke-linecap: round; stroke-linejoin: round; }
 [hidden] { display: none !important; }
 
+/* ANIMACIÓN RGB DINÁMICA PARA PERFILES Y CONTENIDO KIDS */
+@keyframes rgbGlow {
+  0% { border-color: #ff0055; box-shadow: 0 0 16px rgba(255, 0, 85, 0.6); }
+  33% { border-color: #00e5ff; box-shadow: 0 0 16px rgba(0, 229, 255, 0.6); }
+  66% { border-color: #7600ff; box-shadow: 0 0 16px rgba(118, 0, 255, 0.6); }
+  100% { border-color: #ff0055; box-shadow: 0 0 16px rgba(255, 0, 85, 0.6); }
+}
+
+.kids-profile-card,
+.kids-border-active {
+  border: 2px solid #ff0055 !important;
+  animation: rgbGlow 3.5s infinite linear;
+}
+
+.kids-corner-badge {
+  position: absolute;
+  top: 8px;
+  right: 8px;
+  width: 28px;
+  height: 28px;
+  z-index: 5;
+  object-fit: contain;
+  filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
+  pointer-events: none;
+}
+
 .bg-glow {
   position: fixed; inset: 0; pointer-events: none; z-index: -1;
   background: radial-gradient(ellipse at 50% 0%, color-mix(in srgb, var(--accent-color) 10%, transparent), transparent 55%);
@@ -68,6 +94,45 @@ svg { display: block; width: 21px; height: 21px; fill: none; stroke: currentColo
   box-shadow: 0 8px 26px var(--accent-glow); transition: transform 0.2s, box-shadow 0.2s;
 }
 .hero-btn:hover { transform: translateY(-2px); box-shadow: 0 12px 32px var(--accent-glow); }
+
+/* BOTONES MEJORADOS EN EDITAR PERFILES Y AUTH */
+.btn-profile-action {
+  padding: 7px 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(255, 255, 255, 0.08);
+  color: #fff;
+  font-weight: 600;
+  font-size: 0.82rem;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+.btn-profile-action:hover {
+  background: var(--accent-color, #d4af37);
+  color: #000;
+  border-color: var(--accent-color, #d4af37);
+}
+.btn-profile-action.delete-btn:hover {
+  background: #ff4757;
+  color: #fff;
+  border-color: #ff4757;
+}
+
+.auth-toggle-btn {
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 0.9rem;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 8px 12px;
+  border-radius: 8px;
+  transition: all 0.2s ease;
+}
+.auth-toggle-btn:hover {
+  color: var(--accent-color, #d4af37);
+  background: rgba(255, 255, 255, 0.04);
+}
 
 .home-page {
   overflow-x: hidden; background: radial-gradient(ellipse at 78% 12%, rgba(161, 125, 34, 0.10), transparent 34%), #090909;
@@ -272,8 +337,7 @@ svg { display: block; width: 21px; height: 21px; fill: none; stroke: currentColo
 .input-field:focus { border-color: color-mix(in srgb, var(--accent-color) 76%, transparent); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent-color) 12%, transparent); }
 .auth-submit { width:100%; margin-top:24px; min-height:52px; }
 .auth-toggle-row { margin-top:18px; text-align:center; }
-.auth-toggle-row span { display:inline-block; cursor:pointer; color: rgba(247,245,239,.74); font-size:13px; }
-.auth-toggle-row span:hover { color: var(--accent-color); }
+
 .profiles-screen { margin-top:36px; padding:18px 0 0; text-align:center; }
 .profiles-topbar { display:flex; align-items:center; justify-content:center; gap:18px; margin-bottom:24px; }
 .profiles-topbar h1 { margin:0; font-size:clamp(2rem,3vw,3.1rem); letter-spacing:-.06em; font-family:var(--font-display); }
@@ -282,11 +346,11 @@ svg { display: block; width: 21px; height: 21px; fill: none; stroke: currentColo
   display:flex; flex-direction:column; align-items:center; justify-content:center; width:150px; min-height:190px; padding:18px 14px; border-radius:22px; cursor:pointer; border:1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.03); backdrop-filter: blur(16px); transition: transform .22s, border-color .22s, box-shadow .22s;
 }
 .profile-card:hover { transform: translateY(-4px) scale(1.02); border-color: color-mix(in srgb, var(--accent-color) 45%, transparent); box-shadow:0 16px 38px rgba(0,0,0,.25); }
-.profile-avatar-wrap { width:100px; height:100px; border-radius:26px; overflow:hidden; background:linear-gradient(145deg, rgba(255,255,255,.08), rgba(0,0,0,.12)); border:2px solid rgba(255,255,255,.08); }
-.profile-avatar { width:100%; height:100%; object-fit:cover; display:block; }
+.profile-avatar { width:90px; height:90px; border-radius:24px; object-fit:cover; display:block; border:2px solid rgba(255,255,255,.08); }
 .profile-name { margin-top:14px; color: rgba(247,245,239,.94); font-size:14px; font-weight:600; text-align:center; }
-.add-profile-card { justify-content:center; }
-.add-profile-circle { width:100px; height:100px; border-radius:26px; display:grid; place-items:center; font-size:2.8rem; color: rgba(255,255,255,.56); border:1px dashed rgba(255,255,255,.24); background: rgba(255,255,255,.015); }
+.profile-actions { display:flex; gap:8px; margin-top:12px; }
+
+.add-profile-circle { width:90px; height:90px; border-radius:24px; display:grid; place-items:center; font-size:2.5rem; color: rgba(255,255,255,.56); border:1px dashed rgba(255,255,255,.24); background: rgba(255,255,255,.015); }
 .ghost-button, .secondary-button {
   min-height:46px; padding:0 22px; border-radius:12px; border:1px solid rgba(255,255,255,.12); background:rgba(255,255,255,.025); color: rgba(247,245,239,.88); cursor:pointer;
 }
@@ -301,13 +365,50 @@ svg { display: block; width: 21px; height: 21px; fill: none; stroke: currentColo
 .avatar-picker { display:flex; flex-wrap:wrap; gap:12px; padding:14px 0 8px; }
 .avatar-option { width:60px; height:60px; border-radius:18px; object-fit:cover; border:2px solid transparent; cursor:pointer; transition:transform .2s, border-color .2s; }
 .avatar-option:hover, .avatar-option.selected { transform: translateY(-2px); border-color: var(--accent-color); box-shadow: 0 0 0 3px var(--accent-glow); }
-.avatar-loading { color: var(--text-muted); font-size:13px; }
 .modal-actions { display:flex; gap:12px; margin-top:20px; }
 .modal-actions > * { flex:1; }
-.settings-box .field-label { margin-top:16px; }
-.color-pick-wrap { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-top:10px; padding:11px 12px; border-radius:12px; border:1px solid rgba(255,255,255,.08); background: rgba(255,255,255,.03); color: rgba(247,245,239,.8); font-size:12px; }
-.color-pick-wrap input { width:42px; height:32px; padding:0; border:0; background:transparent; cursor:pointer; }
-.full-width { width:100%; margin-top:18px; }
+
+/* DRAWER LIQUID GLASS CON COLOR DINÁMICO */
+.mobile-menu-drawer {
+  position: absolute;
+  top: 12px;
+  left: 12px;
+  bottom: 12px;
+  width: min(330px, calc(100vw - 24px));
+  padding: 20px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  border-radius: 24px;
+  background: rgba(20, 20, 25, 0.55);
+  backdrop-filter: blur(25px) saturate(180%);
+  -webkit-backdrop-filter: blur(25px) saturate(180%);
+  box-shadow: 0 24px 80px rgba(0, 0, 0, 0.6), inset 0 1px 1px rgba(255, 255, 255, 0.2);
+  transform: translateX(-110%);
+  transition: transform 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+  overflow: auto;
+}
+
+.mobile-menu-item {
+  display: flex;
+  align-items: center;
+  gap: 14px;
+  min-height: 48px;
+  padding: 12px 16px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 14px;
+  background: rgba(255, 255, 255, 0.04);
+  color: #f5f2ea;
+  text-decoration: none;
+  font: 600 15px inherit;
+  transition: all 0.2s ease;
+}
+
+.mobile-menu-item:hover, 
+.mobile-menu-item:active {
+  border-color: var(--accent-color, #d4af37);
+  background: rgba(255, 255, 255, 0.12);
+  color: var(--accent-color, #d4af37);
+  box-shadow: 0 0 15px var(--accent-glow, rgba(212, 175, 87, 0.3));
+}
 
 @media(max-width:900px){
   .main-header { gap:25px; padding:0 24px; }
