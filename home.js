@@ -1,41 +1,193 @@
-import { db } from './firebase.js';
+import { db, auth } from './firebase.js';
 import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
 import { applyTranslations, getLanguage, t } from './i18n.js';
 
-const ADMIN_EMAIL='jgonzalezgutierrez1@bcedu.mx';
-const lang=()=>getLanguage();
-const $=(id)=>document.getElementById(id);
-const profile=JSON.parse(localStorage.getItem('lumera_active_profile')||'null');
-let mediaItems=[],heroItems=[],activeFilter='all',heroIndex=0,heroTimer;
-const TEXT={
- es:{home:'Inicio',movie:'Películas',series:'Series',kids:'Kids',signIn:'Iniciar sesión',explore:'Explora el catálogo',noContent:'Tu catálogo te espera',empty:'Cuando se publique contenido, aparecerá aquí.',filterHint:'Prueba con otra sección o ajusta los filtros.',heroFallback:'Una historia para disfrutar.',family:'UN ESPACIO PARA TODA LA FAMILIA',selection:'SELECCIÓN LUMERA',typeMovie:'Película',typeSeries:'Serie',titleOne:'título',titleMany:'títulos',content:'Contenido',catalogError:'No se pudo conectar con el catálogo.'},
- en:{home:'Home',movie:'Movies',series:'Series',kids:'Kids',signIn:'Sign in',explore:'Explore the catalog',noContent:'Your catalog is waiting',empty:'Published titles will appear here.',filterHint:'Try another section or adjust the filters.',heroFallback:'A story to enjoy.',family:'A SPACE FOR THE WHOLE FAMILY',selection:'LUMERA PICKS',typeMovie:'Movie',typeSeries:'Series',titleOne:'title',titleMany:'titles',content:'Content',catalogError:'Could not connect to the catalog.'},
- pt:{home:'Início',movie:'Filmes',series:'Séries',kids:'Kids',signIn:'Entrar',explore:'Explore o catálogo',noContent:'Seu catálogo está esperando',empty:'Os títulos publicados aparecerão aqui.',filterHint:'Tente outra seção ou ajuste os filtros.',heroFallback:'Uma história para curtir.',family:'UM ESPAÇO PARA TODA A FAMÍLIA',selection:'SELEÇÃO LUMERA',typeMovie:'Filme',typeSeries:'Série',titleOne:'título',titleMany:'títulos',content:'Conteúdo',catalogError:'Não foi possível conectar ao catálogo.'},
- fr:{home:'Accueil',movie:'Films',series:'Séries',kids:'Kids',signIn:'Se connecter',explore:'Explorer le catalogue',noContent:'Votre catalogue vous attend',empty:'Les titres publiés apparaîtront ici.',filterHint:'Essayez une autre section ou modifiez les filtres.',heroFallback:'Une histoire à découvrir.',family:'UN ESPACE POUR TOUTE LA FAMILLE',selection:'SÉLECTION LUMERA',typeMovie:'Film',typeSeries:'Série',titleOne:'titre',titleMany:'titres',content:'Contenu',catalogError:'Impossible de se connecter au catalogue.'}
+const ADMIN_EMAIL = 'jgonzalezgutierrez1@bcedu.mx';
+const lang = () => getLanguage();
+const $ = (id) => document.getElementById(id);
+const profile = JSON.parse(localStorage.getItem('lumera_active_profile') || 'null');
+
+let mediaItems = [], heroItems = [], activeFilter = localStorage.getItem('lumera_active_filter') || 'all', heroIndex = 0, heroTimer;
+
+const TEXT = {
+  es: { home:'Inicio', movie:'Películas', series:'Series', kids:'Kids', signIn:'Iniciar sesión', explore:'Explora el catálogo', noContent:'Tu catálogo te espera', empty:'Cuando se publique contenido, aparecerá aquí.', filterHint:'Prueba con otra sección o ajusta los filtros.', discoverLumera:'Descubre Lumera', discoverSub:'Películas y series para disfrutar a tu manera.', family:'UN ESPACIO PARA TODA LA FAMILIA', selection:'SELECCIÓN LUMERA', typeMovie:'Película', typeSeries:'Serie', titleOne:'título', titleMany:'títulos', content:'Contenido', catalogError:'No se pudo conectar con el catálogo.' },
+  en: { home:'Home', movie:'Movies', series:'Series', kids:'Kids', signIn:'Sign in', explore:'Explore the catalog', noContent:'Your catalog is waiting', empty:'Published titles will appear here.', filterHint:'Try another section or adjust the filters.', discoverLumera:'Discover Lumera', discoverSub:'Movies and series to enjoy your way.', family:'A SPACE FOR THE WHOLE FAMILY', selection:'LUMERA PICKS', typeMovie:'Movie', typeSeries:'Series', titleOne:'title', titleMany:'titles', content:'Content', catalogError:'Could not connect to the catalog.' },
+  pt: { home:'Início', movie:'Filmes', series:'Séries', kids:'Kids', signIn:'Entrar', explore:'Explore o catálogo', noContent:'Seu catálogo está esperando', empty:'Os títulos publicados aparecerão aqui.', filterHint:'Tente outra seção ou ajuste os filtros.', discoverLumera:'Descubra Lumera', discoverSub:'Filmes e séries para aproveitar do seu jeito.', family:'UM ESPAÇO PARA TODA A FAMÍLIA', selection:'SELEÇÃO LUMERA', typeMovie:'Filme', typeSeries:'Série', titleOne:'título', titleMany:'títulos', content:'Conteúdo', catalogError:'Não foi possível conectar ao catálogo.' },
+  fr: { home:'Accueil', movie:'Films', series:'Séries', kids:'Kids', signIn:'Se connecter', explore:'Explorer le catalogue', noContent:'Votre catalogue vous attend', empty:'Les titres publiés apparaîtront ici.', filterHint:'Essayez une autre section ou modifiez les filtres.', discoverLumera:'Découvrez Lumera', discoverSub:'Films et séries à apprécier comme vous voulez.', family:'UN ESPACE POUR TOUTE LA FAMILLE', selection:'SÉLECTION LUMERA', typeMovie:'Film', typeSeries:'Série', titleOne:'titre', titleMany:'titres', content:'Contenu', catalogError:'Impossible de se connecter au catalogue.' }
 };
-const words=()=>TEXT[lang()]||TEXT.es;
-function setTheme(color){const safe=/^#[\da-f]{6}$/i.test(color)?color:'#d4af37';document.documentElement.style.setProperty('--accent-color',safe);document.documentElement.style.setProperty('--accent-glow',`${safe}55`);$('accentPicker').value=safe;}
-setTheme(localStorage.getItem('lumera_accent_color')||'#d4af37');$('languageSelect').value=lang();applyTranslations();
-$('accountLabel').textContent=profile?.name||words().signIn;
-if(profile?.avatar)$('accountLink').querySelector('.account-avatar').innerHTML=`<img src="${String(profile.avatar).replace(/[&<>"']/g,'')}" alt="">`;
-onAuthStateChanged(auth,(user)=>{$('adminOpen').hidden=user?.email?.toLowerCase()!==ADMIN_EMAIL.toLowerCase();if(user&&!profile)$('accountLabel').textContent=user.displayName||user.email||words().signIn;});
-function escapeAttr(value=''){return String(value).replace(/[&<>"']/g,(c)=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#39;'}[c]));}
-function localized(item,key){const selected=lang();return item.i18n?.[selected]?.[key]||item.i18n?.es?.[key]||item[key]||'';}
-function posterOf(item){return item.images?.poster||item.poster||'';}
-function synopsisOf(item){return localized(item,'synopsis');}
-function titleOf(item){return localized(item,'title')||item.title||words().content;}
-function inKids(item){return Number(item.ageRating??item.age??99)<=10;}
-function prettyType(item){return item.type==='series'?words().typeSeries:words().typeMovie;}
-function filteredItems(){return mediaItems.filter((item)=>{if(profile?.isKids&&!inKids(item))return false;if(activeFilter==='kids')return inKids(item);if(activeFilter==='movie'||activeFilter==='series')return item.type===activeFilter;return true;});}
-function makeCard(item,compact=false){const card=document.createElement('a');card.className=`media-card${compact?' compact-card':''}`;card.href=`details.html?id=${encodeURIComponent(item.id)}`;const poster=posterOf(item);const title=titleOf(item);card.innerHTML=`<div class="poster-frame">${poster?`<img loading="lazy" src="${escapeAttr(poster)}" alt="${escapeAttr(title)}">`:'<div class="poster-fallback"><span>LUMERA</span></div>'}<span class="poster-type">${escapeAttr(prettyType(item))}</span></div><div class="media-card-copy"><h3>${escapeAttr(title)}</h3><span>${escapeAttr(String(item.year||''))}</span></div>`;return card;}
-function renderRow(id,items,compact=false){const node=$(id);node.replaceChildren();items.forEach((item)=>node.appendChild(makeCard(item,compact)));}
-function renderCatalog(){const items=filteredItems(),w=words();$('sectionTitle').textContent=activeFilter==='movie'?w.movie:activeFilter==='series'?w.series:activeFilter==='kids'?w.kids:w.explore;$('catalogCount').textContent=`${items.length} ${items.length===1?w.titleOne:w.titleMany}`;renderRow('mainCatalogRow',items);$('emptyState').hidden=items.length>0;$('emptyTitle').textContent=w.noContent;$('emptyMessage').textContent=mediaItems.length?w.filterHint:w.empty;$('catalogStatus').hidden=true;$('mainCatalogRow').hidden=items.length===0;$('catalogKicker').textContent=activeFilter==='kids'?w.family:w.selection;document.querySelectorAll('[data-filter]').forEach((button)=>button.classList.toggle('active',button.dataset.filter===activeFilter));if(activeFilter==='all')renderContinueAndNew();else{$('continueSection').hidden=true;$('newSection').hidden=true;}}
-function renderContinueAndNew(){let history=[];try{history=JSON.parse(localStorage.getItem('lumera_continue_watching')||localStorage.getItem('lumera_watch_history')||'[]');}catch{}const ids=new Set(history.map((entry)=>typeof entry==='string'?entry:entry.id));const continuing=mediaItems.filter((item)=>ids.has(item.id)&&(!profile?.isKids||inKids(item)));$('continueSection').hidden=!continuing.length;$('continueCount').textContent=continuing.length?String(continuing.length):'';if(continuing.length)renderRow('continueRow',continuing,true);const newest=[...mediaItems].filter((item)=>!profile?.isKids||inKids(item)).sort((a,b)=>Number(b.createdAt?.seconds||b.year||0)-Number(a.createdAt?.seconds||a.year||0)).slice(0,12);$('newSection').hidden=!newest.length;if(newest.length)renderRow('newRow',newest,true);}
-function showHero(item,index=0){if(!item)return;heroIndex=index;const banner=item.images?.banner||item.banner||item.url||posterOf(item);$('heroImage').style.backgroundImage=banner?`url("${String(banner).replace(/["\\]/g,'')}")`:'none';$('heroTitle').textContent=titleOf(item)||'Descubre Lumera';$('heroDescription').textContent=synopsisOf(item)||`${prettyType(item)}${item.year?` · ${item.year}`:''} · ${words().heroFallback}`;$('heroMeta').textContent=[item.year,item.ageRating!=null?`${item.ageRating}+`:'',item.type?prettyType(item):''].filter(Boolean).join(' · ');$('heroPlayBtn').onclick=()=>{if(item.id)location.href=`details.html?id=${encodeURIComponent(item.id)}`;};$('heroPagination').replaceChildren();const count=Math.min(heroItems.length||1,5);for(let i=0;i<count;i++){const dot=document.createElement('button');dot.className=`hero-dot${i===index%count?' active':''}`;dot.setAttribute('aria-label',`Featured ${i+1}`);dot.onclick=()=>showHero(heroItems[i],i);$('heroPagination').appendChild(dot);}}
-function populateFilters(){const categories=[...new Set(mediaItems.flatMap((item)=>Array.isArray(item.categories)?item.categories:item.category?[item.category]:[]))].sort((a,b)=>String(a).localeCompare(String(b)));const years=[...new Set(mediaItems.map((item)=>item.year).filter(Boolean))].sort((a,b)=>Number(b)-Number(a));categories.forEach((value)=>$('categoryFilter').add(new Option(value,value)));years.forEach((value)=>$('yearFilter').add(new Option(value,value)));}
-function updateSearch(){const q=$('searchQuery').value.trim().toLocaleLowerCase();const category=$('categoryFilter').value;const year=$('yearFilter').value;const maxAge=Number($('ageFilter').value||99);const matches=mediaItems.filter((item)=>(!profile?.isKids||inKids(item))&&(!q||titleOf(item).toLocaleLowerCase().includes(q))&&(!category||(item.categories||[item.category]).filter(Boolean).includes(category))&&(!year||String(item.year)===year)&&Number(item.ageRating??0)<=maxAge);$('searchResultCount').textContent=String(matches.length);const results=$('searchResults');results.replaceChildren();matches.slice(0,30).forEach((item)=>results.appendChild(makeCard(item,true)));if(!matches.length){const empty=document.createElement('p');empty.className='search-empty';empty.textContent=t('noSearchResults');results.appendChild(empty);}}
-async function loadCatalog(){ $('catalogStatus').hidden=false;try{const [contentSnap,heroSnap]=await Promise.all([getDocs(collection(db,'content')),getDocs(collection(db,'hero_slides'))]);mediaItems=contentSnap.docs.map((entry)=>({id:entry.id,...entry.data()}));heroItems=heroSnap.docs.map((entry)=>({id:entry.id,...entry.data()})).filter((item)=>item.url||item.banner);populateFilters();const visible=mediaItems.filter((item)=>!profile?.isKids||inKids(item));if(!heroItems.length)heroItems=visible.filter((item)=>item.images?.banner||posterOf(item));showHero(heroItems[Math.floor(Math.random()*heroItems.length)]||visible[0]);renderCatalog();updateSearch();if(!mediaItems.length){$('catalogStatus').textContent=t('catalogConnectedEmpty');$('catalogStatus').hidden=false;}if(heroItems.length>1){clearInterval(heroTimer);heroTimer=setInterval(()=>showHero(heroItems[(heroIndex+1)%heroItems.length],(heroIndex+1)%heroItems.length),10000);}}catch(error){console.error('Lumera catalog load failed:',error);$('catalogStatus').textContent=words().catalogError;$('catalogStatus').classList.add('status-error');$('catalogStatus').hidden=false;$('emptyState').hidden=false;$('mainCatalogRow').hidden=true;$('emptyTitle').textContent=words().catalogError;$('emptyMessage').textContent=error?.code==='permission-denied'?'Firestore denied the catalog read. Check the database rules.':String(error?.message||'');}}
-document.querySelectorAll('[data-filter]').forEach((button)=>button.addEventListener('click',()=>{activeFilter=button.dataset.filter;renderCatalog();window.scrollTo({top:0,behavior:'smooth'});}));
-const searchDialog=$('searchDialog'),settingsDialog=$('settingsDialog');function openSearch(){searchDialog.showModal();updateSearch();setTimeout(()=>$('searchQuery').focus(),50);}function openSettings(){settingsDialog.showModal();}
-$('searchOpen').onclick=$('mobileSearchOpen').onclick=openSearch;$('settingsOpen').onclick=$('mobileSettingsOpen').onclick=openSettings;$('adminOpen').onclick=()=>location.href='admin.html';['searchQuery','categoryFilter','yearFilter','ageFilter'].forEach((id)=>$(id).addEventListener('input',updateSearch));$('languageSelect').addEventListener('change',(event)=>{localStorage.setItem('lumera_lang',event.target.value);location.reload();});$('accentPicker').addEventListener('input',(event)=>{localStorage.setItem('lumera_accent_color',event.target.value);setTheme(event.target.value);});[searchDialog,settingsDialog].forEach((dialog)=>dialog.addEventListener('click',(event)=>{if(event.target===dialog)dialog.close();}));loadCatalog();
+
+const words = () => TEXT[lang()] || TEXT.es;
+
+function setTheme(color) {
+  const safe = /^#[\da-f]{6}$/i.test(color) ? color : '#d4af37';
+  document.documentElement.style.setProperty('--accent-color', safe);
+  document.documentElement.style.setProperty('--accent-glow', `${safe}55`);
+  if ($('accentPicker')) $('accentPicker').value = safe;
+}
+
+setTheme(localStorage.getItem('lumera_accent_color') || '#d4af37');
+if ($('languageSelect')) $('languageSelect').value = lang();
+applyTranslations();
+
+if ($('accountLabel')) $('accountLabel').textContent = profile?.name || words().signIn;
+if (profile?.avatar && $('accountLink')) $('accountLink').querySelector('.account-avatar').innerHTML = `<img src="${String(profile.avatar).replace(/[&<>"']/g,'')}" alt="">`;
+
+onAuthStateChanged(auth, (user) => {
+  if ($('adminOpen')) $('adminOpen').hidden = user?.email?.toLowerCase() !== ADMIN_EMAIL.toLowerCase();
+  if (user && !profile && $('accountLabel')) $('accountLabel').textContent = user.displayName || user.email || words().signIn;
+});
+
+function escapeAttr(value = '') { return String(value).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c])); }
+function localized(item, key) { const selected = lang(); return item.i18n?.[selected]?.[key] || item.i18n?.es?.[key] || item[key] || ''; }
+function posterOf(item) { return item.images?.poster || item.poster || ''; }
+function synopsisOf(item) { return localized(item, 'synopsis'); }
+function titleOf(item) { return localized(item, 'title') || item.title || words().content; }
+function inKids(item) { return Number(item.ageRating ?? item.age ?? 99) <= 10; }
+function prettyType(item) { return item.type === 'series' ? words().typeSeries : words().typeMovie; }
+
+function filteredItems() {
+  return mediaItems.filter((item) => {
+    if (profile?.isKids && !inKids(item)) return false;
+    if (activeFilter === 'kids') return inKids(item);
+    if (activeFilter === 'movie' || activeFilter === 'series') return item.type === activeFilter;
+    return true;
+  });
+}
+
+function makeCard(item, compact = false) {
+  const card = document.createElement('a');
+  const isKidsContent = inKids(item);
+  card.className = `media-card${compact ? ' compact-card' : ''}${profile?.isKids ? ' kids-border-active' : ''}`;
+  card.href = `details.html?id=${encodeURIComponent(item.id)}`;
+  
+  const poster = posterOf(item);
+  const title = titleOf(item);
+  const kidsBadgeHtml = isKidsContent 
+    ? `<img src="https://i.imgur.com/e0MQHrD.png" class="kids-corner-badge" alt="Kids Badge">` 
+    : '';
+
+  card.innerHTML = `
+    <div class="poster-frame">
+      ${kidsBadgeHtml}
+      ${poster ? `<img loading="lazy" src="${escapeAttr(poster)}" alt="${escapeAttr(title)}">` : '<div class="poster-fallback"><span>LUMERA</span></div>'}
+      <span class="poster-type">${escapeAttr(prettyType(item))}</span>
+    </div>
+    <div class="media-card-copy">
+      <h3>${escapeAttr(title)}</h3>
+      <span>${escapeAttr(String(item.year || ''))}</span>
+    </div>
+  `;
+  return card;
+}
+
+function renderRow(id, items, compact = false) {
+  const node = $(id);
+  if (!node) return;
+  node.replaceChildren();
+  items.forEach((item) => node.appendChild(makeCard(item, compact)));
+}
+
+function renderCatalog() {
+  const items = filteredItems(), w = words();
+  if ($('sectionTitle')) $('sectionTitle').textContent = activeFilter === 'movie' ? w.movie : activeFilter === 'series' ? w.series : activeFilter === 'kids' ? w.kids : w.explore;
+  if ($('catalogCount')) $('catalogCount').textContent = `${items.length} ${items.length === 1 ? w.titleOne : w.titleMany}`;
+  renderRow('mainCatalogRow', items);
+  
+  if ($('emptyState')) $('emptyState').hidden = items.length > 0;
+  if ($('emptyTitle')) $('emptyTitle').textContent = w.noContent;
+  if ($('emptyMessage')) $('emptyMessage').textContent = mediaItems.length ? w.filterHint : w.empty;
+  if ($('catalogStatus')) $('catalogStatus').hidden = true;
+  if ($('mainCatalogRow')) $('mainCatalogRow').hidden = items.length === 0;
+  if ($('catalogKicker')) $('catalogKicker').textContent = activeFilter === 'kids' ? w.family : w.selection;
+  
+  document.querySelectorAll('[data-filter]').forEach((button) => button.classList.toggle('active', button.dataset.filter === activeFilter));
+  if (activeFilter === 'all') renderContinueAndNew();
+  else {
+    if ($('continueSection')) $('continueSection').hidden = true;
+    if ($('newSection')) $('newSection').hidden = true;
+  }
+}
+
+function renderContinueAndNew() {
+  let history = [];
+  try { history = JSON.parse(localStorage.getItem('lumera_continue_watching') || localStorage.getItem('lumera_watch_history') || '[]'); } catch {}
+  const ids = new Set(history.map((entry) => typeof entry === 'string' ? entry : entry.id));
+  const continuing = mediaItems.filter((item) => ids.has(item.id) && (!profile?.isKids || inKids(item)));
+  
+  if ($('continueSection')) $('continueSection').hidden = !continuing.length;
+  if ($('continueCount')) $('continueCount').textContent = continuing.length ? String(continuing.length) : '';
+  if (continuing.length) renderRow('continueRow', continuing, true);
+
+  const newest = [...mediaItems].filter((item) => !profile?.isKids || inKids(item)).sort((a, b) => Number(b.createdAt?.seconds || b.year || 0) - Number(a.createdAt?.seconds || a.year || 0)).slice(0, 12);
+  if ($('newSection')) $('newSection').hidden = !newest.length;
+  if (newest.length) renderRow('newRow', newest, true);
+}
+
+function showHero(item, index = 0) {
+  if (!item) return;
+  heroIndex = index;
+  const banner = item.images?.banner || item.banner || item.url || posterOf(item);
+  if ($('heroImage')) $('heroImage').style.backgroundImage = banner ? `url("${String(banner).replace(/["\\]/g, '')}")` : 'none';
+  
+  // TRADUCCIÓN AUTOMÁTICA DEL HERO SIN TEXTO VIEJO
+  if ($('heroTitle')) $('heroTitle').textContent = titleOf(item) || words().discoverLumera;
+  if ($('heroDescription')) $('heroDescription').textContent = synopsisOf(item) || words().discoverSub;
+  if ($('heroMeta')) $('heroMeta').textContent = [item.year, item.ageRating != null ? `${item.ageRating}+` : '', item.type ? prettyType(item) : ''].filter(Boolean).join(' · ');
+  if ($('heroPlayBtn')) $('heroPlayBtn').onclick = () => { if (item.id) location.href = `details.html?id=${encodeURIComponent(item.id)}`; };
+  
+  if ($('heroPagination')) {
+    $('heroPagination').replaceChildren();
+    const count = Math.min(heroItems.length || 1, 5);
+    for (let i = 0; i < count; i++) {
+      const dot = document.createElement('button');
+      dot.className = `hero-dot${i === index % count ? ' active' : ''}`;
+      dot.setAttribute('aria-label', `Featured ${i + 1}`);
+      dot.onclick = () => showHero(heroItems[i], i);
+      $('heroPagination').appendChild(dot);
+    }
+  }
+}
+
+function populateFilters() {
+  const categories = [...new Set(mediaItems.flatMap((item) => Array.isArray(item.categories) ? item.categories : item.category ? [item.category] : []))].sort((a, b) => String(a).localeCompare(String(b)));
+  const years = [...new Set(mediaItems.map((item) => item.year).filter(Boolean))].sort((a, b) => Number(b) - Number(a));
+  if ($('categoryFilter')) categories.forEach((value) => $('categoryFilter').add(new Option(value, value)));
+  if ($('yearFilter')) years.forEach((value) => $('yearFilter').add(new Option(value, value)));
+}
+
+async function loadCatalog() {
+  if ($('catalogStatus')) $('catalogStatus').hidden = false;
+  try {
+    const [contentSnap, heroSnap] = await Promise.all([getDocs(collection(db, 'content')), getDocs(collection(db, 'hero_slides'))]);
+    mediaItems = contentSnap.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
+    heroItems = heroSnap.docs.map((entry) => ({ id: entry.id, ...entry.data() })).filter((item) => item.url || item.banner);
+    populateFilters();
+
+    const visible = mediaItems.filter((item) => !profile?.isKids || inKids(item));
+    if (!heroItems.length) heroItems = visible.filter((item) => item.images?.banner || posterOf(item));
+    
+    showHero(heroItems[Math.floor(Math.random() * heroItems.length)] || visible[0]);
+    renderCatalog();
+    
+    if (!mediaItems.length && $('catalogStatus')) {
+      $('catalogStatus').textContent = t('catalogConnectedEmpty');
+      $('catalogStatus').hidden = false;
+    }
+    if (heroItems.length > 1) {
+      clearInterval(heroTimer);
+      heroTimer = setInterval(() => showHero(heroItems[(heroIndex + 1) % heroItems.length], (heroIndex + 1) % heroItems.length), 10000);
+    }
+  } catch (error) {
+    console.error('Lumera catalog load failed:', error);
+  }
+}
+
+document.querySelectorAll('[data-filter]').forEach((button) => button.addEventListener('click', () => {
+  activeFilter = button.dataset.filter;
+  localStorage.setItem('lumera_active_filter', activeFilter);
+  renderCatalog();
+  window.scrollTo({ top: 0, behavior: 'smooth' });
+}));
+
+loadCatalog();
