@@ -58,7 +58,9 @@ const dictionaries = {
     missingMedia: 'Contenido no encontrado.',
     detailsLoadError: 'No se pudieron cargar los detalles.',
     untitled: 'Sin título',
-    noDescription: 'Sin descripción disponible.'
+    noDescription: 'Sin descripción disponible.',
+    discoverLumera: 'Descubre Lumera',
+    discoverSub: 'Películas y series para disfrutar a tu manera.'
   },
   en: {
     cmsTitle: 'Movies & Series CMS',
@@ -119,7 +121,9 @@ const dictionaries = {
     missingMedia: 'Content not found.',
     detailsLoadError: 'Could not load details.',
     untitled: 'Untitled',
-    noDescription: 'No description available.'
+    noDescription: 'No description available.',
+    discoverLumera: 'Discover Lumera',
+    discoverSub: 'Movies and series to enjoy your way.'
   },
   pt: {
     cmsTitle: 'CMS de Filmes e Séries',
@@ -180,7 +184,9 @@ const dictionaries = {
     missingMedia: 'Conteúdo não encontrado.',
     detailsLoadError: 'Não foi possível carregar os detalhes.',
     untitled: 'Sem título',
-    noDescription: 'Nenhuma descrição disponível.'
+    noDescription: 'Nenhuma descrição disponível.',
+    discoverLumera: 'Descubra Lumera',
+    discoverSub: 'Filmes e séries para aproveitar do seu jeito.'
   },
   fr: {
     cmsTitle: 'CMS Films et Séries',
@@ -241,7 +247,9 @@ const dictionaries = {
     missingMedia: 'Contenu non trouvé.',
     detailsLoadError: 'Impossible de charger les détails.',
     untitled: 'Sans titre',
-    noDescription: 'Aucune description disponible.'
+    noDescription: 'Aucune description disponible.',
+    discoverLumera: 'Découvrez Lumera',
+    discoverSub: 'Films et séries à apprécier comme vous voulez.'
   }
 };
 
@@ -265,7 +273,8 @@ const legacyTextKeys = {
   'No encontramos títulos con esos filtros.':'noSearchResults','No titles match those filters.':'noSearchResults','Prueba con otra sección o ajusta los filtros.':'tryOtherFilters',
   'Catálogo conectado · aún no hay contenido publicado':'catalogConnectedEmpty','No se pudo conectar con el catálogo.':'catalogConnectError',
   '¿Quién está viendo?':'whoIsWatching', 'Cerrar sesión':'logout', 'Iniciar sesión':'signIn', 'Entrar':'enter', 'Crear cuenta':'createAccount',
-  '¿No tienes cuenta? Regístrate':'noAccount', '¿Ya tienes cuenta? Inicia sesión':'hasAccount', 'Correo':'email', 'Contraseña':'password'
+  '¿No tienes cuenta? Regístrate':'noAccount', '¿Ya tienes cuenta? Inicia sesión':'hasAccount', 'Correo':'email', 'Contraseña':'password',
+  'Descubre Lumera':'discoverLumera', 'Película · Una historia para disfrutar.':'discoverSub'
 };
 
 export const supportedLanguages=['es','en','pt','fr'];
