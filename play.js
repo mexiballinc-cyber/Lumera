@@ -5,7 +5,14 @@ const urlParams = new URLSearchParams(window.location.search);
 const mediaId = urlParams.get('id');
 const episodeNum = urlParams.get('ep') || '1';
 const seasonNum = urlParams.get('season') || '1';
-const lang = localStorage.getItem('lumera_lang') || 'es';
+const userLang = localStorage.getItem('lumera_lang') || 'es';
+
+const LANG_NAMES = {
+  es: 'Español',
+  en: 'English',
+  pt: 'Português',
+  fr: 'Français'
+};
 
 const videoPlayer = document.getElementById('lumeraVideoPlayer');
 const backBtn = document.getElementById('backBtn');
@@ -101,8 +108,6 @@ async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Españo
 
   try {
     let rawUrl = decodeURIComponent(subtitleUrl.trim());
-    
-    // Transformación directa a CDN en crudo de Dropbox
     let directUrl = rawUrl
       .replace("www.dropbox.com", "dl.dropboxusercontent.com")
       .replace("?dl=0", "")
@@ -113,7 +118,6 @@ async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Españo
     if (!response.ok) throw new Error("Error HTTP al descargar VTT");
 
     let text = await response.text();
-
     text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     if (!text.trim().startsWith("WEBVTT")) {
       text = "WEBVTT\n\n" + text.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
@@ -131,7 +135,6 @@ async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Españo
 
     videoElement.appendChild(track);
 
-    // Forzar renderizado en pantalla
     setTimeout(() => {
       if (videoElement.textTracks && videoElement.textTracks.length > 0) {
         for (let i = 0; i < videoElement.textTracks.length; i++) {
@@ -145,34 +148,47 @@ async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Españo
   }
 }
 
-// Extractor 100% compatible con la base de datos de Firestore
-function extractVideoUrlFromObj(obj) {
-  if (!obj) return '';
-  if (typeof obj === 'string') return obj;
-  if (obj.videoUrl) return obj.videoUrl;
-  if (obj.video) return obj.video;
-  if (obj.url) return obj.url;
-  if (typeof obj.sources === 'string') return obj.sources;
-  if (obj.sources && typeof obj.sources === 'object') {
-    const val = obj.sources[lang] || obj.sources.es || Object.values(obj.sources)[0];
-    if (typeof val === 'string') return val;
-    if (val && typeof val === 'object') return val.videoUrl || val.url || val.video || '';
+// Extrae todos los mapas de video disponibles por idioma
+function extractVideoSources(obj) {
+  const result = {};
+  if (!obj) return result;
+  if (typeof obj === 'string') {
+    result.es = obj;
+    return result;
   }
-  return '';
+  if (obj.sources && typeof obj.sources === 'object') {
+    for (const [code, val] of Object.entries(obj.sources)) {
+      if (typeof val === 'string' && val.trim()) result[code] = val.trim();
+      else if (val && typeof val === 'object' && (val.videoUrl || val.url || val.video)) {
+        result[code] = val.videoUrl || val.url || val.video;
+      }
+    }
+  }
+  if (Object.keys(result).length === 0) {
+    const single = obj.videoUrl || obj.video || obj.url;
+    if (single) result.es = single;
+  }
+  return result;
 }
 
-function extractSubUrlFromObj(obj) {
-  if (!obj) return '';
-  if (typeof obj === 'string') return obj;
-  if (obj.subtitleUrl) return obj.subtitleUrl;
-  if (obj.subUrl) return obj.subUrl;
-  if (obj.subtitlesUrl) return obj.subtitlesUrl;
-  if (typeof obj.subtitles === 'string') return obj.subtitles;
-  if (obj.subtitles && typeof obj.subtitles === 'object') {
-    const val = obj.subtitles[lang] || obj.subtitles.es || Object.values(obj.subtitles)[0];
-    if (typeof val === 'string') return val;
+// Extrae todos los mapas de subtítulos disponibles por idioma
+function extractSubtitleSources(obj) {
+  const result = {};
+  if (!obj) return result;
+  if (typeof obj === 'string') {
+    result.es = obj;
+    return result;
   }
-  return '';
+  if (obj.subtitles && typeof obj.subtitles === 'object') {
+    for (const [code, val] of Object.entries(obj.subtitles)) {
+      if (typeof val === 'string' && val.trim()) result[code] = val.trim();
+    }
+  }
+  if (Object.keys(result).length === 0) {
+    const single = obj.subtitleUrl || obj.subUrl || obj.subtitlesUrl;
+    if (single) result.es = single;
+  }
+  return result;
 }
 
 async function initPlayer() {
@@ -189,9 +205,8 @@ async function initPlayer() {
     }
     
     const media = docSnap.data();
-    let videoSrc = '';
-    let subtitleSrc = '';
-    let title = media.i18n?.[lang]?.title || media.title || 'Sin título';
+    let title = media.i18n?.[userLang]?.title || media.title || 'Sin título';
+    let targetObject = media;
 
     const seasons = media.seasons || media.temporadas || [];
     if (seasons.length > 0) {
@@ -200,41 +215,72 @@ async function initPlayer() {
       if (episodes.length > 0) {
         const ep = episodes.find(e => String(e.episodeNumber || e.number || 1) === String(episodeNum)) || episodes[0];
         if (ep) {
-          videoSrc = extractVideoUrlFromObj(ep);
-          subtitleSrc = extractSubUrlFromObj(ep);
-          const epTitle = ep.episodeTitle || ep.title || ep.name || `Episodio ${episodeNum}`;
+          targetObject = ep;
+          const epTitle = ep.i18n?.[userLang]?.title || ep.episodeTitle || ep.title || ep.name || `Episodio ${episodeNum}`;
           title = `${title} - E${episodeNum}: ${epTitle}`;
         }
       }
     }
 
-    if (!videoSrc) {
-      videoSrc = extractVideoUrlFromObj(media);
-      subtitleSrc = extractSubUrlFromObj(media) || subtitleSrc;
-    }
+    const videoMap = extractVideoSources(targetObject);
+    const subtitleMap = extractSubtitleSources(targetObject);
 
-    if (!videoSrc) {
+    const availableAudioLangs = Object.keys(videoMap);
+    if (availableAudioLangs.length === 0) {
       if (mediaTitle) mediaTitle.textContent = "No se encontró URL de video";
       return;
     }
 
     if (mediaTitle) mediaTitle.textContent = title;
-    videoPlayer.src = videoSrc;
 
+    // Seleccionar audio coincidente con idioma del usuario o fallback
+    let selectedAudioLang = availableAudioLangs.includes(userLang)
+      ? userLang
+      : (availableAudioLangs.includes('es') ? 'es' : availableAudioLangs[0]);
+
+    videoPlayer.src = videoMap[selectedAudioLang];
+
+    // Llenar selector de audio
     if (audioSelect) {
-      audioSelect.innerHTML = `<option value="${videoSrc}">ES (Español)</option>`;
+      audioSelect.innerHTML = availableAudioLangs
+        .map(code => `<option value="${code}" ${code === selectedAudioLang ? 'selected' : ''}>${code.toUpperCase()} (${LANG_NAMES[code] || code})</option>`)
+        .join('');
+
+      audioSelect.addEventListener('change', (e) => {
+        const newLang = e.target.value;
+        if (videoMap[newLang] && videoMap[newLang] !== videoPlayer.src) {
+          const currentTime = videoPlayer.currentTime;
+          const isPaused = videoPlayer.paused;
+          videoPlayer.src = videoMap[newLang];
+          videoPlayer.currentTime = currentTime;
+          if (!isPaused) videoPlayer.play().catch(() => {});
+        }
+      });
     }
-    
+
+    // Llenar selector de subtítulos
     if (subtitleSelect) {
-      subtitleSelect.innerHTML = `<option value="">Off</option>`;
-      if (subtitleSrc) {
-        subtitleSelect.innerHTML += `<option value="${subtitleSrc}" selected>ES (Español)</option>`;
-        loadSubtitleTrack(videoPlayer, subtitleSrc);
+      const availableSubLangs = Object.keys(subtitleMap);
+      subtitleSelect.innerHTML = `<option value="">Off</option>` + availableSubLangs
+        .map(code => `<option value="${code}">${code.toUpperCase()} (${LANG_NAMES[code] || code})</option>`)
+        .join('');
+
+      let selectedSubLang = availableSubLangs.includes(userLang)
+        ? userLang
+        : (availableSubLangs.includes('es') ? 'es' : '');
+
+      if (selectedSubLang && subtitleMap[selectedSubLang]) {
+        subtitleSelect.value = selectedSubLang;
+        loadSubtitleTrack(videoPlayer, subtitleMap[selectedSubLang], LANG_NAMES[selectedSubLang] || selectedSubLang);
       }
 
       subtitleSelect.addEventListener('change', (e) => {
-        if (e.target.value) loadSubtitleTrack(videoPlayer, e.target.value);
-        else videoPlayer.querySelectorAll('track').forEach(t => t.remove());
+        const subLang = e.target.value;
+        if (subLang && subtitleMap[subLang]) {
+          loadSubtitleTrack(videoPlayer, subtitleMap[subLang], LANG_NAMES[subLang] || subLang);
+        } else {
+          videoPlayer.querySelectorAll('track').forEach(t => t.remove());
+        }
       });
     }
 
