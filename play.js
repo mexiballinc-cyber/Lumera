@@ -1,19 +1,12 @@
-/**
- * Lumera Video Player Controller
- * Handles media retrieval, playback controls, subtitle tracks, and UI states.
- */
-
 import { db } from './firebase.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
 
-// Query string parameter parsing
 const urlParams = new URLSearchParams(window.location.search);
 const mediaId = urlParams.get('id');
 const episodeNum = urlParams.get('ep') || '1';
 const seasonNum = urlParams.get('season') || '1';
 const lang = localStorage.getItem('lumera_lang') || 'es';
 
-// DOM Element Selectors
 const videoPlayer = document.getElementById('lumeraVideoPlayer');
 const backBtn = document.getElementById('backBtn');
 const mediaTitle = document.getElementById('mediaTitle');
@@ -26,223 +19,90 @@ const timeDisplay = document.getElementById('timeDisplay');
 const subtitleSelect = document.getElementById('subtitleSelect');
 const audioSelect = document.getElementById('audioSelect');
 
-// State flags and timers
-let hideTimeout = null;
-let isSeeking = false;
-let autoHideDelay = 3500; // milliseconds
+let hideTimeout;
 
-/**
- * Reset auto-hide controls timer on user activity.
- */
 function resetControlsTimer() {
   document.body.classList.remove('controls-hidden');
   clearTimeout(hideTimeout);
-  if (!videoPlayer.paused) {
-    hideTimeout = setTimeout(() => {
+  hideTimeout = setTimeout(() => {
+    if (!videoPlayer.paused) {
       document.body.classList.add('controls-hidden');
-    }, autoHideDelay);
-  }
-}
-
-/**
- * Attach global event listeners for mouse and touch events
- */
-function setupActivityListeners() {
-  document.addEventListener('mousemove', resetControlsTimer);
-  document.addEventListener('touchstart', resetControlsTimer);
-  document.addEventListener('click', resetControlsTimer);
-}
-
-/**
- * Handle keyboard hotkeys (Spacebar to toggle play/pause, Arrow keys for seek)
- */
-function setupKeyboardControls() {
-  document.addEventListener('keydown', (e) => {
-    const activeTag = document.activeElement ? document.activeElement.tagName : '';
-    if (activeTag === 'INPUT' || activeTag === 'SELECT' || activeTag === 'TEXTAREA') {
-      return;
     }
-
-    switch (e.code) {
-      case 'Space':
-      case 'KeyK':
-        e.preventDefault();
-        togglePlayPause();
-        break;
-      case 'ArrowLeft':
-        e.preventDefault();
-        seekRelative(-10);
-        break;
-      case 'ArrowRight':
-        e.preventDefault();
-        seekRelative(10);
-        break;
-      case 'KeyM':
-        e.preventDefault();
-        toggleMute();
-        break;
-      case 'KeyF':
-        e.preventDefault();
-        toggleFullscreen();
-        break;
-      default:
-        break;
-    }
-  });
+  }, 3500);
 }
 
-/**
- * Toggle Video Playback State
- */
-function togglePlayPause() {
-  if (!videoPlayer) return;
-  if (videoPlayer.paused) {
-    videoPlayer.play().catch((err) => console.warn('Playback error:', err));
-  } else {
-    videoPlayer.pause();
-  }
-}
+document.addEventListener('mousemove', resetControlsTimer);
+document.addEventListener('touchstart', resetControlsTimer);
 
-/**
- * Seek relative seconds forward or backward
- */
-function seekRelative(seconds) {
-  if (!videoPlayer || isNaN(videoPlayer.duration)) return;
-  const newTime = Math.min(Math.max(videoPlayer.currentTime + seconds, 0), videoPlayer.duration);
-  videoPlayer.currentTime = newTime;
-}
-
-/**
- * Toggle Mute status
- */
-function toggleMute() {
-  if (!videoPlayer) return;
-  videoPlayer.muted = !videoPlayer.muted;
-}
-
-/**
- * Toggle Fullscreen mode
- */
-function toggleFullscreen() {
-  const container = document.documentElement;
-  if (!document.fullscreenElement) {
-    if (container.requestFullscreen) {
-      container.requestFullscreen();
-    } else if (container.webkitRequestFullscreen) {
-      container.webkitRequestFullscreen();
-    }
-  } else {
-    if (document.exitFullscreen) {
-      document.exitFullscreen();
-    } else if (document.webkitExitFullscreen) {
-      document.webkitExitFullscreen();
-    }
-  }
-}
-
-/**
- * Setup event listeners on the HTML5 video element
- */
-function setupVideoPlayerEvents() {
-  if (!videoPlayer) return;
-
-  videoPlayer.addEventListener('play', () => {
-    if (playIcon) playIcon.style.display = 'none';
-    if (pauseIcon) pauseIcon.style.display = 'block';
-    resetControlsTimer();
-  });
-
-  videoPlayer.addEventListener('pause', () => {
-    if (playIcon) playIcon.style.display = 'block';
-    if (pauseIcon) pauseIcon.style.display = 'none';
-    document.body.classList.remove('controls-hidden');
-  });
-
-  videoPlayer.addEventListener('timeupdate', () => {
-    if (isSeeking) return;
-    const current = videoPlayer.currentTime || 0;
-    const duration = videoPlayer.duration || 0;
-    const pct = duration > 0 ? (current / duration) * 100 : 0;
-    
-    if (progressFill) progressFill.style.width = `${pct}%`;
-    if (timeDisplay) timeDisplay.textContent = `${formatTime(current)} / ${formatTime(duration)}`;
-  });
-
-  videoPlayer.addEventListener('ended', () => {
-    document.body.classList.remove('controls-hidden');
-    if (playIcon) playIcon.style.display = 'block';
-    if (pauseIcon) pauseIcon.style.display = 'none';
-  });
-}
-
-/**
- * Format seconds into MM:SS or HH:MM:SS format
- */
-function formatTime(sec) {
-  if (isNaN(sec) || sec < 0) return "00:00";
-  const hours = Math.floor(sec / 3600);
-  const minutes = Math.floor((sec % 3600) / 60);
-  const seconds = Math.floor(sec % 60);
-
-  const mStr = String(minutes).padStart(2, '0');
-  const sStr = String(seconds).padStart(2, '0');
-
-  if (hours > 0) {
-    const hStr = String(hours).padStart(2, '0');
-    return `${hStr}:${mStr}:${sStr}`;
-  }
-  return `${mStr}:${sStr}`;
-}
-
-/**
- * Setup custom interactive timeline progress bar
- */
-function setupProgressBar() {
-  if (!progressBar) return;
-
-  const calculateProgress = (e) => {
-    const rect = progressBar.getBoundingClientRect();
-    const pos = Math.max(0, Math.min(e.clientX - rect.left, rect.width));
-    return pos / rect.width;
-  };
-
-  progressBar.addEventListener('click', (e) => {
-    if (!videoPlayer || isNaN(videoPlayer.duration)) return;
-    const percentage = calculateProgress(e);
-    videoPlayer.currentTime = percentage * videoPlayer.duration;
-  });
-
-  progressBar.addEventListener('mousedown', () => { isSeeking = true; });
-  document.addEventListener('mouseup', () => { isSeeking = false; });
-}
-
-/**
- * Setup navigation back button behavior
- */
-function setupBackButton() {
-  if (!backBtn) return;
-  backBtn.addEventListener('click', () => {
-    if (window.history.length > 1) {
-      window.history.back();
+// Atajo de teclado tecla Espacio para Pausar/Reproducir
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
+    e.preventDefault();
+    if (videoPlayer.paused) {
+      videoPlayer.play();
     } else {
-      window.location.href = 'home.html';
+      videoPlayer.pause();
     }
+  }
+});
+
+if (playPauseBtn) {
+  playPauseBtn.addEventListener('click', () => {
+    if (videoPlayer.paused) videoPlayer.play();
+    else videoPlayer.pause();
   });
 }
 
-/**
- * Dynamically parse, format, and load WebVTT subtitle track
- */
-async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Español') {
-  if (!videoElement) return;
+videoPlayer.addEventListener('play', () => {
+  if (playIcon) playIcon.style.display = 'none';
+  if (pauseIcon) pauseIcon.style.display = 'block';
+  resetControlsTimer();
+});
 
+videoPlayer.addEventListener('pause', () => {
+  if (playIcon) playIcon.style.display = 'block';
+  if (pauseIcon) pauseIcon.style.display = 'none';
+  document.body.classList.remove('controls-hidden');
+});
+
+function formatTime(sec) {
+  if (isNaN(sec)) return "00:00";
+  const m = Math.floor(sec / 60);
+  const s = Math.floor(sec % 60);
+  return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
+}
+
+videoPlayer.addEventListener('timeupdate', () => {
+  const pct = (videoPlayer.currentTime / videoPlayer.duration) * 100 || 0;
+  if (progressFill) progressFill.style.width = `${pct}%`;
+  if (timeDisplay) timeDisplay.textContent = `${formatTime(videoPlayer.currentTime)} / ${formatTime(videoPlayer.duration)}`;
+});
+
+if (progressBar) {
+  progressBar.addEventListener('click', (e) => {
+    const rect = progressBar.getBoundingClientRect();
+    const pos = (e.clientX - rect.left) / rect.width;
+    videoPlayer.currentTime = pos * videoPlayer.duration;
+  });
+}
+
+if (backBtn) {
+  backBtn.addEventListener('click', () => {
+    window.history.back();
+  });
+}
+
+// Carga segura y directa de subtítulos (Sin proxies fallidos y con conversión de Dropbox)
+async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Español') {
   const oldTracks = videoElement.querySelectorAll('track');
   oldTracks.forEach(t => t.remove());
 
-  if (!subtitleUrl || typeof subtitleUrl !== 'string') return;
+  if (!subtitleUrl) return;
 
   try {
     let rawUrl = decodeURIComponent(subtitleUrl.trim());
+    
+    // Transformación directa a CDN en crudo de Dropbox
     let directUrl = rawUrl
       .replace("www.dropbox.com", "dl.dropboxusercontent.com")
       .replace("?dl=0", "")
@@ -250,9 +110,10 @@ async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Españo
       .replace("?raw=1", "");
 
     const response = await fetch(directUrl);
-    if (!response.ok) throw new Error("Subtitles fetch error status: " + response.status);
+    if (!response.ok) throw new Error("Error HTTP al descargar VTT");
 
     let text = await response.text();
+
     text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
     if (!text.trim().startsWith("WEBVTT")) {
       text = "WEBVTT\n\n" + text.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
@@ -270,6 +131,7 @@ async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Españo
 
     videoElement.appendChild(track);
 
+    // Forzar renderizado en pantalla
     setTimeout(() => {
       if (videoElement.textTracks && videoElement.textTracks.length > 0) {
         for (let i = 0; i < videoElement.textTracks.length; i++) {
@@ -277,47 +139,52 @@ async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Españo
         }
       }
     }, 150);
+
   } catch (err) {
-    console.error("Fallo al cargar subtítulos:", err);
+    console.error("Fallo la carga de subtítulos:", err);
   }
 }
 
-/**
- * Helper extractor for video URLs from objects or arrays
- */
+// Extractor 100% compatible con la base de datos de Firestore
 function extractVideoUrlFromObj(obj) {
   if (!obj) return '';
   if (typeof obj === 'string') return obj;
   if (obj.videoUrl) return obj.videoUrl;
   if (obj.video) return obj.video;
   if (obj.url) return obj.url;
+  if (typeof obj.sources === 'string') return obj.sources;
+  if (obj.sources && typeof obj.sources === 'object') {
+    const val = obj.sources[lang] || obj.sources.es || Object.values(obj.sources)[0];
+    if (typeof val === 'string') return val;
+    if (val && typeof val === 'object') return val.videoUrl || val.url || val.video || '';
+  }
   return '';
 }
 
-/**
- * Helper extractor for subtitle URLs from objects or arrays
- */
 function extractSubUrlFromObj(obj) {
   if (!obj) return '';
   if (typeof obj === 'string') return obj;
   if (obj.subtitleUrl) return obj.subtitleUrl;
   if (obj.subUrl) return obj.subUrl;
+  if (obj.subtitlesUrl) return obj.subtitlesUrl;
+  if (typeof obj.subtitles === 'string') return obj.subtitles;
+  if (obj.subtitles && typeof obj.subtitles === 'object') {
+    const val = obj.subtitles[lang] || obj.subtitles.es || Object.values(obj.subtitles)[0];
+    if (typeof val === 'string') return val;
+  }
   return '';
 }
 
-/**
- * Initialize video player with content data from Firestore
- */
 async function initPlayer() {
   if (!mediaId) {
-    window.location.href = 'home.html';
+    window.location.href = 'index.html';
     return;
   }
   
   try {
     const docSnap = await getDoc(doc(db, "content", mediaId));
     if (!docSnap.exists()) {
-      if (mediaTitle) mediaTitle.textContent = "Contenido no disponible";
+      if (mediaTitle) mediaTitle.textContent = "Contenido no disponible en Firestore";
       return;
     }
     
@@ -347,7 +214,7 @@ async function initPlayer() {
     }
 
     if (!videoSrc) {
-      if (mediaTitle) mediaTitle.textContent = "No se encontró el video";
+      if (mediaTitle) mediaTitle.textContent = "No se encontró URL de video";
       return;
     }
 
@@ -366,30 +233,17 @@ async function initPlayer() {
       }
 
       subtitleSelect.addEventListener('change', (e) => {
-        if (e.target.value) {
-          loadSubtitleTrack(videoPlayer, e.target.value);
-        } else {
-          videoPlayer.querySelectorAll('track').forEach(t => t.remove());
-        }
+        if (e.target.value) loadSubtitleTrack(videoPlayer, e.target.value);
+        else videoPlayer.querySelectorAll('track').forEach(t => t.remove());
       });
     }
 
-    if (playPauseBtn) {
-      playPauseBtn.addEventListener('click', togglePlayPause);
-    }
-
     videoPlayer.play().catch(() => {});
+
   } catch (err) {
-    console.error("Error al inicializar el reproductor:", err);
+    console.error("Error al iniciar reproductor:", err);
+    if (mediaTitle) mediaTitle.textContent = "Error al conectar con la base de datos";
   }
 }
 
-// Attach all module handlers
-setupActivityListeners();
-setupKeyboardControls();
-setupVideoPlayerEvents();
-setupProgressBar();
-setupBackButton();
-
-// Execute Initialization
 initPlayer();
