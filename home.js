@@ -1,7 +1,7 @@
 import { db, auth } from './firebase.js';
 import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
 import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
-import { applyTranslations, getLanguage, t } from './i18n.js';
+import { applyTranslations, getLanguage, setLanguage, t } from './i18n.js';
 
 const ADMIN_EMAIL = 'jgonzalezgutierrez1@bcedu.mx';
 const lang = () => getLanguage();
@@ -125,9 +125,6 @@ function showHero(item, index = 0) {
   if ($('heroDescription')) $('heroDescription').textContent = synopsisOf(item) || t('discoverSub');
   if ($('heroMeta')) $('heroMeta').textContent = [item.year, item.ageRating != null ? `${item.ageRating}+` : '', item.type ? prettyType(item) : ''].filter(Boolean).join(' · ');
   
-  // Ocultamos el botón "View details" estático si existía
-  if ($('heroViewDetailsBtn')) $('heroViewDetailsBtn').style.display = 'none';
-
   if ($('heroPlayBtn')) {
     $('heroPlayBtn').onclick = () => { if (item.id) location.href = `details.html?id=${encodeURIComponent(item.id)}`; };
   }
@@ -152,6 +149,22 @@ function populateFilters() {
   if ($('yearFilter')) years.forEach((value) => $('yearFilter').add(new Option(value, value)));
 }
 
+function updateSearch() {
+  const q = $('searchQuery')?.value.trim().toLocaleLowerCase() || ''; 
+  const category = $('categoryFilter')?.value || ''; 
+  const year = $('yearFilter')?.value || ''; 
+  const maxAge = Number($('ageFilter')?.value || 999);
+  
+  const matches = mediaItems.filter(item => (!profile?.isKids || inKids(item)) && (!q || String(titleOf(item)).toLocaleLowerCase().includes(q)) && (!category || (item.categories || [item.category]).filter(Boolean).includes(category)) && (!year || String(item.year) === year) && Number(item.ageRating ?? 0) <= maxAge);
+  if ($('searchResultCount')) $('searchResultCount').textContent = String(matches.length); 
+  
+  const results = $('searchResults'); 
+  if (!results) return;
+  results.replaceChildren();
+  matches.slice(0,30).forEach(item => results.appendChild(makeCard(item, true)));
+  if (!matches.length) results.innerHTML = `<p class="search-empty">${t('noSearchResults')}</p>`;
+}
+
 async function loadCatalog() {
   if ($('catalogStatus')) $('catalogStatus').hidden = false;
   try {
@@ -165,6 +178,7 @@ async function loadCatalog() {
     
     showHero(heroItems[Math.floor(Math.random() * heroItems.length)] || visible[0]);
     renderCatalog();
+    updateSearch();
     
     if (!mediaItems.length && $('catalogStatus')) {
       $('catalogStatus').textContent = t('catalogConnectedEmpty');
@@ -185,5 +199,37 @@ document.querySelectorAll('[data-filter]').forEach((button) => button.addEventLi
   renderCatalog();
   window.scrollTo({ top: 0, behavior: 'smooth' });
 }));
+
+const searchDialog = $('searchDialog'), settingsDialog = $('settingsDialog');
+function openSearch() { if(searchDialog){ searchDialog.showModal(); updateSearch(); setTimeout(() => $('searchQuery')?.focus(), 50); } }
+function openSettings() { if(settingsDialog) settingsDialog.showModal(); }
+
+if ($('searchOpen')) $('searchOpen').onclick = openSearch;
+if ($('mobileSearchOpen')) $('mobileSearchOpen').onclick = openSearch;
+if ($('settingsOpen')) $('settingsOpen').onclick = openSettings;
+if ($('mobileSettingsOpen')) $('mobileSettingsOpen').onclick = openSettings;
+if ($('adminOpen')) $('adminOpen').onclick = () => location.href = 'admin.html';
+
+['searchQuery','categoryFilter','yearFilter','ageFilter'].forEach(id => {
+  if ($(id)) $(id).addEventListener('input', updateSearch);
+});
+
+if ($('languageSelect')) {
+  $('languageSelect').addEventListener('change', event => {
+    setLanguage(event.target.value);
+    location.reload();
+  });
+}
+
+if ($('accentPicker')) {
+  $('accentPicker').addEventListener('input', event => {
+    localStorage.setItem('lumera_accent_color', event.target.value);
+    setTheme(event.target.value);
+  });
+}
+
+[searchDialog, settingsDialog].forEach(dialog => {
+  if (dialog) dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+});
 
 loadCatalog();
