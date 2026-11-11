@@ -4,10 +4,11 @@ import { addDoc, collection, getDocs, deleteDoc, doc, getDoc, updateDoc } from '
 
 const LOCALES={es:{flag:'🇪🇸',label:'Español'},en:{flag:'🇺🇸',label:'English'},pt:{flag:'🇵🇹',label:'Português'},fr:{flag:'🇫🇷',label:'Français'}};
 const $=(id)=>document.getElementById(id);
-let activeLocale=getLanguage(), seasonsDraft=[], seasonSequence=0, episodeSequence=0, busy=false, editingId=null;
+let activeLocale=getLanguage(), seasonsDraft=[], seasonSequence=0, episodeSequence=0, busy=false, editingId=null, editingCatId=null;
 const localizedRecord=()=>({title:'',synopsis:'',participants:'',video:'',subtitles:''});
 const blankContent=()=>({i18n:Object.fromEntries(supportedLanguages.map((lang)=>[lang,localizedRecord()])),seasons:[]});
 let contentDraft=blankContent();
+let loadedCategories = [];
 
 function setStatus(message='',error=false){$('cmsStatus').textContent=message;$('cmsStatus').style.color=error?'#ffaaaa':'';}
 function localeData(record,locale){record[locale]||=localizedRecord();return record[locale];}
@@ -130,6 +131,7 @@ function resetEditor(){
  $('banner').value='';
  $('year').value=new Date().getFullYear();
  $('ageRating').value='';
+ $('contentCategory').value='';
  document.querySelector('input[name="contentType"][value="movie"]').checked=true;
  $('seriesSection').hidden=true;
  $('publishBtn').textContent=t('publish') || 'Guardar y publicar en Firebase';
@@ -178,6 +180,8 @@ async function beginEdit(id){
    $('banner').value=item.images?.banner||item.banner||'';
    $('year').value=item.year||new Date().getFullYear();
    $('ageRating').value=item.ageRating??item.age??'';
+   $('contentCategory').value=Array.isArray(item.categories) ? item.categories[0] || '' : item.category || '';
+
    document.querySelector(`input[name="contentType"][value="${item.type==='series'?'series':'movie'}"]`).checked=true;
    $('seriesSection').hidden=item.type!=='series';
    
@@ -202,12 +206,15 @@ async function publishMedia(){
    return;
  }
  const type=document.querySelector('input[name="contentType"]:checked').value;
+ const catValue = $('contentCategory').value;
  
  const payload={
    title,
    type,
    year:Number($('year').value)||new Date().getFullYear(),
    ageRating:Number($('ageRating').value)||0,
+   categories: catValue ? [catValue] : [],
+   category: catValue || '',
    images:{poster,banner:$('banner').value.trim()},
    i18n:Object.fromEntries(supportedLanguages.map((lang)=>{
      const data=contentDraft.i18n[lang]||localizedRecord();
@@ -251,6 +258,103 @@ async function publishMedia(){
    busy=false;
    $('publishBtn').disabled=false;
  }
+}
+
+/* FUNCIONES DE GESTIÓN DE CATEGORÍAS */
+async function loadCategories() {
+  const container = $('categoriesList');
+  const select = $('contentCategory');
+  if(!container || !select) return;
+
+  container.replaceChildren();
+  select.innerHTML = '<option value="">Sin Categoría</option>';
+
+  try {
+    const snap = await getDocs(collection(db, 'categories'));
+    loadedCategories = snap.docs.map(doc => ({ id: doc.id, ...doc.data() }));
+
+    loadedCategories.forEach(cat => {
+      const name = cat.i18n?.[activeLocale]?.name || cat.i18n?.es?.name || cat.name || 'Sin Nombre';
+      
+      const opt = document.createElement('option');
+      opt.value = cat.i18n?.es?.name || cat.name || name;
+      opt.textContent = name;
+      select.appendChild(opt);
+
+      const row = document.createElement('div');
+      row.className = 'cms-catalog-item';
+      row.innerHTML = `
+        <div class="cms-catalog-copy">
+          <strong>${name}</strong>
+          <span style="font-size:0.75rem; color:#888;">ES: ${cat.i18n?.es?.name || ''} | EN: ${cat.i18n?.en?.name || ''} | PT: ${cat.i18n?.pt?.name || ''} | FR: ${cat.i18n?.fr?.name || ''}</span>
+        </div>
+        <div class="cms-actions">
+          <button class="cms-small-btn edit-cat-btn" type="button">Editar</button>
+          <button class="cms-small-btn cms-danger del-cat-btn" type="button">Eliminar</button>
+        </div>
+      `;
+
+      row.querySelector('.edit-cat-btn').onclick = () => {
+        editingCatId = cat.id;
+        $('catEs').value = cat.i18n?.es?.name || '';
+        $('catEn').value = cat.i18n?.en?.name || '';
+        $('catPt').value = cat.i18n?.pt?.name || '';
+        $('catFr').value = cat.i18n?.fr?.name || '';
+        $('saveCategoryBtn').textContent = 'Guardar Cambios de Categoría';
+      };
+
+      row.querySelector('.del-cat-btn').onclick = async () => {
+        if(!confirm('¿Eliminar esta categoría?')) return;
+        await deleteDoc(doc(db, 'categories', cat.id));
+        loadCategories();
+      };
+
+      container.appendChild(row);
+    });
+  } catch(e) {
+    console.error('Error cargando categorías:', e);
+  }
+}
+
+async function saveCategory() {
+  const es = $('catEs').value.trim();
+  const en = $('catEn').value.trim();
+  const pt = $('catPt').value.trim();
+  const fr = $('catFr').value.trim();
+
+  if (!es) {
+    alert('Ingresa al menos el nombre en español.');
+    return;
+  }
+
+  const payload = {
+    name: es,
+    i18n: {
+      es: { name: es },
+      en: { name: en || es },
+      pt: { name: pt || es },
+      fr: { name: fr || es }
+    }
+  };
+
+  try {
+    if (editingCatId) {
+      await updateDoc(doc(db, 'categories', editingCatId), payload);
+    } else {
+      await addDoc(collection(db, 'categories'), payload);
+    }
+
+    editingCatId = null;
+    $('catEs').value = '';
+    $('catEn').value = '';
+    $('catPt').value = '';
+    $('catFr').value = '';
+    $('saveCategoryBtn').textContent = '+ Guardar Categoría';
+
+    await loadCategories();
+  } catch(e) {
+    console.error('Error al guardar categoría:', e);
+  }
 }
 
 async function loadCatalog(){
@@ -326,6 +430,7 @@ function refreshInterfaceLanguage(language){
  applyTranslations();
  $('uiLanguage').value=language;
  renderCurrentLocale();
+ loadCategories();
  loadCatalog();
 }
 
@@ -346,6 +451,8 @@ $('addSeasonBtn').addEventListener('click',()=>{
  seasonsDraft.push({key:`season-${++seasonSequence}`,i18n:{},episodes:[]});
  renderSeasons();
 });
+
+$('saveCategoryBtn').addEventListener('click', saveCategory);
 
 $('seasonsContainer').addEventListener('click',(event)=>{
  const button=event.target.closest('button[data-action]');
@@ -368,4 +475,5 @@ $('publishBtn').addEventListener('click',publishMedia);
 applyTranslations();
 $('uiLanguage').value=getLanguage();
 renderCurrentLocale();
+loadCategories();
 loadCatalog();
