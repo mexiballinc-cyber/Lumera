@@ -59,35 +59,100 @@
     </section>
 
     <section class="catalog-area" aria-live="polite">
+      <!-- FILA CONTINUAR VIENDO -->
       <section class="media-section" id="continueSection" hidden>
-        <div class="section-heading"><div><p class="section-kicker" data-i18n="continueKicker">RETOMA DONDE LO DEJASTE</p><h2 data-i18n="continueWatching">Continuar viendo</h2></div><span class="section-count" id="continueCount"></span></div>
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker" data-i18n="continueKicker">RETOMA DONDE LO DEJASTE</p>
+            <h2 data-i18n="continueWatching">Continuar viendo</h2>
+          </div>
+          <span class="section-count" id="continueCount"></span>
+        </div>
         <div class="media-row" id="continueRow"></div>
       </section>
+
+      <!-- RECIÉN LLEGADOS -->
       <section class="media-section" id="newSection" hidden>
-        <div class="section-heading"><div><p class="section-kicker" data-i18n="newArrivals">RECIÉN LLEGADOS</p><h2 data-i18n="newItems">Nuevos agregados</h2></div></div>
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker" data-i18n="newArrivals">RECIÉN LLEGADOS</p>
+            <h2 data-i18n="newItems">Nuevos agregados</h2>
+          </div>
+        </div>
         <div class="media-row" id="newRow"></div>
       </section>
+
+      <!-- CATÁLOGO PRINCIPAL -->
       <section class="media-section" id="mainSection">
-        <div class="section-heading"><div><p class="section-kicker" id="catalogKicker" data-i18n="catalogKicker">SELECCIÓN LUMERA</p><h2 id="sectionTitle" data-i18n="explore">Explora el catálogo</h2></div><span class="section-count" id="catalogCount"></span></div>
+        <div class="section-heading">
+          <div>
+            <p class="section-kicker" id="catalogKicker" data-i18n="catalogKicker">SELECCIÓN LUMERA</p>
+            <h2 id="sectionTitle" data-i18n="explore">Explora el catálogo</h2>
+          </div>
+          <span class="section-count" id="catalogCount"></span>
+        </div>
         <div class="media-row" id="mainCatalogRow"></div>
-        <div class="empty-state" id="emptyState" hidden><div class="empty-orb"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8m-8 4h5"/></svg></div><h3 id="emptyTitle" data-i18n="catalogEmpty">Tu catálogo te espera</h3><p id="emptyMessage" data-i18n="catalogConnectedEmpty">Cuando se publique contenido, aparecerá aquí.</p></div>
+        <div class="empty-state" id="emptyState" hidden>
+          <div class="empty-orb"><svg viewBox="0 0 24 24"><path d="M4 5h16v14H4zM8 9h8m-8 4h5"/></svg></div>
+          <h3 id="emptyTitle" data-i18n="catalogEmpty">Tu catálogo te espera</h3>
+          <p id="emptyMessage" data-i18n="catalogConnectedEmpty">Cuando se publique contenido, aparecerá aquí.</p>
+        </div>
       </section>
     </section>
   </main>
 
   <dialog class="glass-dialog" id="searchDialog">
     <form method="dialog" class="dialog-shell" id="searchForm">
-      <div class="dialog-heading"><div><p class="section-kicker" data-i18n="findStory">ENCUENTRA TU PRÓXIMA HISTORIA</p><h2 data-i18n="searchContent">Buscar contenido</h2></div><button class="close-button" value="close" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
-      <label class="field-label" for="searchQuery" data-i18n="titleLabel">Título</label><input id="searchQuery" class="glass-input" type="search" placeholder="¿Qué quieres ver?" autocomplete="off">
-      <div class="filter-grid"><div><label class="field-label" for="categoryFilter" data-i18n="category">Categoría</label><select class="glass-input" id="categoryFilter"><option value="" data-i18n="all">Todas</option></select></div><div><label class="field-label" for="yearFilter">Año</label><select class="glass-input" id="yearFilter"><option value="">Cualquier año</option></select></div><div><label class="field-label" for="ageFilter">Edad máxima</label><select class="glass-input" id="ageFilter"><option value="">Sin límite</option><option value="7">7+</option><option value="10">10+</option><option value="13">13+</option><option value="16">16+</option><option value="18">18+</option></select></div></div>
-      <div class="search-results-head"><span data-i18n="results">Resultados</span><span id="searchResultCount">0</span></div><div class="search-results" id="searchResults"></div>
+      <div class="dialog-heading">
+        <div><p class="section-kicker" data-i18n="findStory">ENCUENTRA TU PRÓXIMA HISTORIA</p><h2 data-i18n="searchContent">Buscar contenido</h2></div>
+        <button class="close-button" value="close" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      </div>
+      <label class="field-label" for="searchQuery" data-i18n="titleLabel">Título</label>
+      <input id="searchQuery" class="glass-input" type="search" placeholder="¿Qué quieres ver?" autocomplete="off">
+      <div class="filter-grid">
+        <div>
+          <label class="field-label" for="categoryFilter" data-i18n="category">Categoría</label>
+          <select class="glass-input" id="categoryFilter"><option value="" data-i18n="all">Todas</option></select>
+        </div>
+        <div>
+          <label class="field-label" for="yearFilter">Año</label>
+          <select class="glass-input" id="yearFilter"><option value="">Cualquier año</option></select>
+        </div>
+        <div>
+          <label class="field-label" for="ageFilter">Edad máxima</label>
+          <select class="glass-input" id="ageFilter">
+            <option value="">Sin límite</option>
+            <option value="7">7+</option>
+            <option value="10">10+</option>
+            <option value="13">13+</option>
+            <option value="16">16+</option>
+            <option value="18">18+</option>
+          </select>
+        </div>
+      </div>
+      <div class="search-results-head"><span data-i18n="results">Resultados</span><span id="searchResultCount">0</span></div>
+      <div class="search-results" id="searchResults"></div>
     </form>
   </dialog>
 
   <dialog class="glass-dialog settings-dialog" id="settingsDialog">
-    <form method="dialog" class="dialog-shell"><div class="dialog-heading"><div><p class="section-kicker" data-i18n="yourStyle">A TU ESTILO</p><h2 data-i18n="settings">Configuración</h2></div><button class="close-button" value="close" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button></div>
-      <label class="field-label" for="languageSelect" data-i18n="interfaceLanguage">Idioma de la interfaz</label><select class="glass-input" id="languageSelect"><option value="es">Español</option><option value="en">English</option><option value="pt">Português</option><option value="fr">Français</option></select>
-      <label class="field-label color-label" for="accentPicker" data-i18n="accentColor">Color de acento</label><div class="color-picker-row"><span data-i18n="accentDetails">Detalles, bordes y resplandores</span><input id="accentPicker" type="color" value="#d4af37" aria-label="Elegir color de acento"></div>
+    <form method="dialog" class="dialog-shell">
+      <div class="dialog-heading">
+        <div><p class="section-kicker" data-i18n="yourStyle">A TU ESTILO</p><h2 data-i18n="settings">Configuración</h2></div>
+        <button class="close-button" value="close" aria-label="Cerrar"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18"/></svg></button>
+      </div>
+      <label class="field-label" for="languageSelect" data-i18n="interfaceLanguage">Idioma de la interfaz</label>
+      <select class="glass-input" id="languageSelect">
+        <option value="es">Español</option>
+        <option value="en">English</option>
+        <option value="pt">Português</option>
+        <option value="fr">Français</option>
+      </select>
+      <label class="field-label color-label" for="accentPicker" data-i18n="accentColor">Color de acento</label>
+      <div class="color-picker-row">
+        <span data-i18n="accentDetails">Detalles, bordes y resplandores</span>
+        <input id="accentPicker" type="color" value="#d4af37" aria-label="Elegir color de acento">
+      </div>
       <p class="settings-note">Tu idioma y color se guardan en este dispositivo.</p>
     </form>
   </dialog>
@@ -181,7 +246,9 @@
 
     function renderContinueAndNew() {
       let history = [];
-      try { history = JSON.parse(localStorage.getItem('lumera_continue_watching') || localStorage.getItem('lumera_watch_history') || '[]'); } catch { history = []; }
+      try { 
+        history = JSON.parse(localStorage.getItem('lumera_continue_watching') || localStorage.getItem('lumera_watch_history') || '[]'); 
+      } catch { history = []; }
       
       const historyMap = new Map();
       history.forEach(entry => {
@@ -207,6 +274,7 @@
       if ($('continueSection')) $('continueSection').hidden = continuing.length === 0;
       if ($('continueCount')) $('continueCount').textContent = continuing.length ? `${continuing.length}` : '';
       if (continuing.length) renderRow('continueRow', continuing, true);
+      
       const newest = [...mediaItems].filter(item => !profile?.isKids || inKids(item)).sort((a,b) => Number(b.createdAt?.seconds || b.year || 0) - Number(a.createdAt?.seconds || a.year || 0)).slice(0,12);
       if ($('newSection')) $('newSection').hidden = newest.length === 0;
       if (newest.length) renderRow('newRow', newest, true);
