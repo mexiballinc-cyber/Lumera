@@ -8,7 +8,12 @@ const lang = () => getLanguage();
 const $ = (id) => document.getElementById(id);
 const profile = JSON.parse(localStorage.getItem('lumera_active_profile') || 'null');
 
-let mediaItems = [], heroItems = [], activeFilter = localStorage.getItem('lumera_active_filter') || 'all', heroIndex = 0, heroTimer;
+let mediaItems = [];
+let loadedCategories = [];
+let heroItems = [];
+let activeFilter = localStorage.getItem('lumera_active_filter') || 'all';
+let heroIndex = 0;
+let heroTimer;
 
 function setTheme(color) {
   const safe = /^#[\da-f]{6}$/i.test(color) ? color : '#d4af37';
@@ -72,31 +77,74 @@ function makeCard(item, compact = false) {
   return card;
 }
 
-function renderRow(id, items, compact = false) {
-  const node = $(id);
-  if (!node) return;
-  node.replaceChildren();
-  items.forEach((item) => node.appendChild(makeCard(item, compact)));
+function renderRow(containerId, items, compact = false) {
+  const container = typeof containerId === 'string' ? $(containerId) : containerId;
+  if (!container) return;
+  container.replaceChildren();
+  items.forEach((item) => container.appendChild(makeCard(item, compact)));
 }
 
 function renderCatalog() {
   const items = filteredItems();
+  const dynamicContainer = $('dynamicCategoriesContainer');
+
   if ($('sectionTitle')) $('sectionTitle').textContent = activeFilter === 'movie' ? t('movie') : activeFilter === 'series' ? t('series') : activeFilter === 'kids' ? t('kids') : t('explore');
   if ($('catalogCount')) $('catalogCount').textContent = `${items.length} ${t('results')}`;
-  renderRow('mainCatalogRow', items);
-  
-  if ($('emptyState')) $('emptyState').hidden = items.length > 0;
-  if ($('emptyTitle')) $('emptyTitle').textContent = t('catalogEmpty');
-  if ($('emptyMessage')) $('emptyMessage').textContent = mediaItems.length ? t('tryOtherFilters') : t('catalogConnectedEmpty');
   if ($('catalogStatus')) $('catalogStatus').hidden = true;
-  if ($('mainCatalogRow')) $('mainCatalogRow').hidden = items.length === 0;
-  if ($('catalogKicker')) $('catalogKicker').textContent = activeFilter === 'kids' ? t('kids') : t('catalogKicker');
-  
+
   document.querySelectorAll('[data-filter]').forEach((button) => button.classList.toggle('active', button.dataset.filter === activeFilter));
-  if (activeFilter === 'all') renderContinueAndNew();
-  else {
+
+  if (activeFilter === 'all') {
+    renderContinueAndNew();
+    if ($('mainSection')) $('mainSection').hidden = true;
+
+    if (dynamicContainer) {
+      dynamicContainer.replaceChildren();
+
+      // Agrupar items por categorías reales
+      const categoriesMap = new Map();
+      items.forEach(item => {
+        const cats = Array.isArray(item.categories) ? item.categories : (item.category ? [item.category] : []);
+        cats.forEach(cat => {
+          if (!categoriesMap.has(cat)) categoriesMap.set(cat, []);
+          categoriesMap.get(cat).push(item);
+        });
+      });
+
+      categoriesMap.forEach((catItems, catName) => {
+        if (!catItems.length) return;
+
+        // Traducir nombre de categoría según el idioma de la interfaz
+        const selectedLang = lang();
+        const matchedCat = loadedCategories.find(c => (c.i18n?.es?.name || c.name) === catName || c.name === catName);
+        const displayCatName = matchedCat?.i18n?.[selectedLang]?.name || matchedCat?.i18n?.es?.name || catName;
+
+        const section = document.createElement('section');
+        section.className = 'media-section';
+        section.innerHTML = `
+          <div class="section-heading">
+            <div>
+              <p class="section-kicker">${t('category') || 'CATEGORÍA'}</p>
+              <h2>${escapeAttr(displayCatName)}</h2>
+            </div>
+            <span class="section-count">${catItems.length}</span>
+          </div>
+          <div class="media-row"></div>
+        `;
+        const row = section.querySelector('.media-row');
+        renderRow(row, catItems, true);
+        dynamicContainer.appendChild(section);
+      });
+    }
+  } else {
     if ($('continueSection')) $('continueSection').hidden = true;
     if ($('newSection')) $('newSection').hidden = true;
+    if (dynamicContainer) dynamicContainer.replaceChildren();
+    if ($('mainSection')) $('mainSection').hidden = false;
+
+    renderRow('mainCatalogRow', items);
+    if ($('emptyState')) $('emptyState').hidden = items.length > 0;
+    if ($('mainCatalogRow')) $('mainCatalogRow').hidden = items.length === 0;
   }
 }
 
@@ -121,12 +169,11 @@ function renderContinueAndNew() {
     .filter(item => historyMap.has(item.id) && (!profile?.isKids || inKids(item)))
     .map(item => {
       const saved = historyMap.get(item.id);
-      return {
-        ...item,
-        targetUrl: saved?.episodeId 
-          ? `details.html?id=${encodeURIComponent(item.id)}&episode=${encodeURIComponent(saved.episodeId)}`
-          : `details.html?id=${encodeURIComponent(item.id)}`
-      };
+      let target = `details.html?id=${encodeURIComponent(item.id)}`;
+      if (saved?.season && saved?.ep) {
+        target = `play.html?id=${encodeURIComponent(item.id)}&ep=${encodeURIComponent(saved.ep)}&season=${encodeURIComponent(saved.season)}`;
+      }
+      return { ...item, targetUrl: target };
     });
   
   if ($('continueSection')) $('continueSection').hidden = !continuing.length;
@@ -199,10 +246,15 @@ function updateSearch() {
 async function loadCatalog() {
   if ($('catalogStatus')) $('catalogStatus').hidden = false;
   try {
-    const [contentSnap, heroSnap] = await Promise.all([getDocs(collection(db, 'content')), getDocs(collection(db, 'hero_slides'))]);
-    mediaItems = contentSnap.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
+    const [contentSnap, heroSnap, categoriesSnap] = await Promise.all([
+      getDocs(collection(db, 'content')),
+      getDocs(collection(db, 'hero_slides')),
+      getDocs(collection(db, 'categories'))
+    ]);
     
-    // Mapear heros con la información de redirección si existe
+    mediaItems = contentSnap.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
+    loadedCategories = categoriesSnap.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
+    
     heroItems = heroSnap.docs.map((entry) => {
       const data = entry.data();
       const matchedContent = data.contentId ? mediaItems.find(m => m.id === data.contentId) : null;
