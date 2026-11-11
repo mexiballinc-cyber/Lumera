@@ -50,7 +50,7 @@ function makeCard(item, compact = false) {
   const card = document.createElement('a');
   const isKidsContent = inKids(item);
   card.className = `media-card${compact ? ' compact-card' : ''}${profile?.isKids ? ' kids-border-active' : ''}`;
-  card.href = `details.html?id=${encodeURIComponent(item.id)}`;
+  card.href = item.targetUrl || `details.html?id=${encodeURIComponent(item.id)}`;
   
   const poster = posterOf(item);
   const title = titleOf(item);
@@ -102,9 +102,32 @@ function renderCatalog() {
 
 function renderContinueAndNew() {
   let history = [];
-  try { history = JSON.parse(localStorage.getItem('lumera_continue_watching') || localStorage.getItem('lumera_watch_history') || '[]'); } catch {}
-  const ids = new Set(history.map((entry) => typeof entry === 'string' ? entry : entry.id));
-  const continuing = mediaItems.filter((item) => ids.has(item.id) && (!profile?.isKids || inKids(item)));
+  try { 
+    history = JSON.parse(localStorage.getItem('lumera_continue_watching') || localStorage.getItem('lumera_watch_history') || '[]'); 
+  } catch {
+    history = [];
+  }
+  
+  const historyMap = new Map();
+  history.forEach(entry => {
+    if (typeof entry === 'string') {
+      historyMap.set(entry, { id: entry });
+    } else if (entry && entry.id) {
+      historyMap.set(entry.id, entry);
+    }
+  });
+
+  const continuing = mediaItems
+    .filter(item => historyMap.has(item.id) && (!profile?.isKids || inKids(item)))
+    .map(item => {
+      const saved = historyMap.get(item.id);
+      return {
+        ...item,
+        targetUrl: saved?.episodeId 
+          ? `details.html?id=${encodeURIComponent(item.id)}&episode=${encodeURIComponent(saved.episodeId)}`
+          : `details.html?id=${encodeURIComponent(item.id)}`
+      };
+    });
   
   if ($('continueSection')) $('continueSection').hidden = !continuing.length;
   if ($('continueCount')) $('continueCount').textContent = continuing.length ? String(continuing.length) : '';
@@ -126,7 +149,15 @@ function showHero(item, index = 0) {
   if ($('heroMeta')) $('heroMeta').textContent = [item.year, item.ageRating != null ? `${item.ageRating}+` : '', item.type ? prettyType(item) : ''].filter(Boolean).join(' · ');
   
   if ($('heroPlayBtn')) {
-    $('heroPlayBtn').onclick = () => { if (item.id) location.href = `details.html?id=${encodeURIComponent(item.id)}`; };
+    $('heroPlayBtn').onclick = () => {
+      if (item.contentId) {
+        location.href = `details.html?id=${encodeURIComponent(item.contentId)}`;
+      } else if (item.customLink) {
+        location.href = item.customLink;
+      } else if (item.id) {
+        location.href = `details.html?id=${encodeURIComponent(item.id)}`;
+      }
+    };
   }
   
   if ($('heroPagination')) {
@@ -170,7 +201,18 @@ async function loadCatalog() {
   try {
     const [contentSnap, heroSnap] = await Promise.all([getDocs(collection(db, 'content')), getDocs(collection(db, 'hero_slides'))]);
     mediaItems = contentSnap.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
-    heroItems = heroSnap.docs.map((entry) => ({ id: entry.id, ...entry.data() })).filter((item) => item.url || item.banner);
+    
+    // Mapear heros con la información de redirección si existe
+    heroItems = heroSnap.docs.map((entry) => {
+      const data = entry.data();
+      const matchedContent = data.contentId ? mediaItems.find(m => m.id === data.contentId) : null;
+      return {
+        id: entry.id,
+        ...data,
+        ...(matchedContent || {})
+      };
+    }).filter((item) => item.url || item.banner);
+
     populateFilters();
 
     const visible = mediaItems.filter((item) => !profile?.isKids || inKids(item));
