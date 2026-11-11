@@ -1,38 +1,39 @@
 import { db } from './firebase.js';
 import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
+import { getLanguage } from './i18n.js';
 
-const urlParams = new URLSearchParams(window.location.search);
-const mediaId = urlParams.get('id');
-const episodeNum = urlParams.get('ep') || '1';
-const seasonNum = urlParams.get('season') || '1';
-const userLang = localStorage.getItem('lumera_lang') || 'es';
+const params = new URLSearchParams(window.location.search);
+const mediaId = params.get('id');
+const requestedEp = Number(params.get('ep') || 1);
+const requestedSeason = Number(params.get('season') || 1);
+const lang = getLanguage();
+const $ = id => document.getElementById(id);
 
-const LANG_NAMES = {
-  es: 'Español',
-  en: 'English',
-  pt: 'Português',
-  fr: 'Français'
-};
+const video = $('lumeraVideoPlayer');
+const playPauseBtn = $('playPauseBtn');
+const playIcon = $('playIcon');
+const pauseIcon = $('pauseIcon');
+const progressBar = $('progressBar');
+const progressFill = $('progressFill');
+const timeDisplay = $('timeDisplay');
+const mediaTitle = $('mediaTitle');
+const audioSelect = $('audioSelect');
+const subtitleSelect = $('subtitleSelect');
+const backBtn = $('backBtn');
+const moreBtn = $('moreEpisodesBtn');
+const modal = $('episodesModal');
+const episodesContainer = $('episodesListContainer');
 
-const videoPlayer = document.getElementById('lumeraVideoPlayer');
-const backBtn = document.getElementById('backBtn');
-const mediaTitle = document.getElementById('mediaTitle');
-const playPauseBtn = document.getElementById('playPauseBtn');
-const playIcon = document.getElementById('playIcon');
-const pauseIcon = document.getElementById('pauseIcon');
-const progressBar = document.getElementById('progressBar');
-const progressFill = document.getElementById('progressFill');
-const timeDisplay = document.getElementById('timeDisplay');
-const subtitleSelect = document.getElementById('subtitleSelect');
-const audioSelect = document.getElementById('audioSelect');
+let currentMedia = null;
+let nextUrl = null;
+let hideTimeout = null;
 
-let hideTimeout;
-
+// Control visual de ocultar controles tras inactividad
 function resetControlsTimer() {
   document.body.classList.remove('controls-hidden');
   clearTimeout(hideTimeout);
   hideTimeout = setTimeout(() => {
-    if (!videoPlayer.paused) {
+    if (!video.paused) {
       document.body.classList.add('controls-hidden');
     }
   }, 3500);
@@ -41,255 +42,231 @@ function resetControlsTimer() {
 document.addEventListener('mousemove', resetControlsTimer);
 document.addEventListener('touchstart', resetControlsTimer);
 
-// Atajo de teclado tecla Espacio para Pausar/Reproducir
-document.addEventListener('keydown', (e) => {
-  if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
-    e.preventDefault();
-    if (videoPlayer.paused) {
-      videoPlayer.play();
-    } else {
-      videoPlayer.pause();
-    }
-  }
-});
-
-if (playPauseBtn) {
-  playPauseBtn.addEventListener('click', () => {
-    if (videoPlayer.paused) videoPlayer.play();
-    else videoPlayer.pause();
-  });
-}
-
-videoPlayer.addEventListener('play', () => {
-  if (playIcon) playIcon.style.display = 'none';
-  if (pauseIcon) pauseIcon.style.display = 'block';
-  resetControlsTimer();
-});
-
-videoPlayer.addEventListener('pause', () => {
-  if (playIcon) playIcon.style.display = 'block';
-  if (pauseIcon) pauseIcon.style.display = 'none';
-  document.body.classList.remove('controls-hidden');
-});
-
-function formatTime(sec) {
-  if (isNaN(sec)) return "00:00";
-  const m = Math.floor(sec / 60);
-  const s = Math.floor(sec % 60);
+function formatTime(seconds) {
+  if (isNaN(seconds)) return "00:00";
+  const m = Math.floor(seconds / 60);
+  const s = Math.floor(seconds % 60);
   return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
-videoPlayer.addEventListener('timeupdate', () => {
-  const pct = (videoPlayer.currentTime / videoPlayer.duration) * 100 || 0;
+function saveHistory(id, season, ep) {
+  try {
+    let history = JSON.parse(localStorage.getItem('lumera_continue_watching') || '[]');
+    history = history.filter(item => (typeof item === 'string' ? item : item.id) !== id);
+    history.unshift({ id, season, ep, updatedAt: Date.now() });
+    localStorage.setItem('lumera_continue_watching', JSON.stringify(history.slice(0, 25)));
+  } catch (e) {}
+}
+
+// Inyección limpia idéntica a la de Play 3 que SI funciona
+function activateSubtitleTrack(targetUrl) {
+  Array.from(video.querySelectorAll('track')).forEach(t => t.remove());
+
+  if (!targetUrl) return;
+
+  const track = document.createElement('track');
+  track.kind = 'subtitles';
+  track.label = 'Subtítulo';
+  track.srclang = lang;
+  track.src = targetUrl;
+  track.default = true;
+
+  video.appendChild(track);
+
+  setTimeout(() => {
+    if (video.textTracks && video.textTracks[0]) {
+      video.textTracks[0].mode = 'showing';
+    }
+  }, 100);
+}
+
+async function init() {
+  if (!mediaId) { location.href = 'home.html'; return; }
+  try {
+    const snap = await getDoc(doc(db, 'content', mediaId));
+    if (!snap.exists()) { location.href = 'home.html'; return; }
+    currentMedia = snap.data();
+
+    saveHistory(mediaId, requestedSeason, requestedEp);
+
+    const isSeries = currentMedia.type === 'series';
+    const title = currentMedia.i18n?.[lang]?.title || currentMedia.i18n?.es?.title || currentMedia.title || 'Lumera';
+
+    if (!isSeries) {
+      if (mediaTitle) mediaTitle.textContent = title;
+      loadSources(currentMedia.sources, currentMedia.subtitles);
+    } else {
+      const seasonData = currentMedia.seasons?.find(s => Number(s.seasonNumber) === requestedSeason) || currentMedia.seasons?.[0];
+      const episodeData = seasonData?.episodes?.find(e => Number(e.episodeNumber) === requestedEp) || seasonData?.episodes?.[0];
+
+      if (episodeData) {
+        const epTitle = episodeData.i18n?.[lang]?.title || episodeData.i18n?.es?.title || episodeData.title || '';
+        if (mediaTitle) mediaTitle.textContent = `${title} — T${seasonData.seasonNumber || requestedSeason}:E${episodeData.episodeNumber || requestedEp} ${epTitle}`;
+        loadSources(episodeData.sources, episodeData.subtitles);
+
+        const totalEpisodes = (currentMedia.seasons || []).reduce((acc, s) => acc + (s.episodes?.length || 0), 0);
+        if (totalEpisodes > 1 && moreBtn) {
+          moreBtn.hidden = false;
+          renderEpisodesList();
+        }
+
+        const nextEpInSeason = seasonData.episodes?.find(e => Number(e.episodeNumber) === requestedEp + 1);
+        if (nextEpInSeason) {
+          nextUrl = `play.html?id=${encodeURIComponent(mediaId)}&ep=${nextEpInSeason.episodeNumber}&season=${seasonData.seasonNumber || requestedSeason}`;
+        } else {
+          const nextSeason = currentMedia.seasons?.find(s => Number(s.seasonNumber) === (requestedSeason + 1));
+          if (nextSeason?.episodes?.length) {
+            nextUrl = `play.html?id=${encodeURIComponent(mediaId)}&ep=${nextSeason.episodes[0].episodeNumber || 1}&season=${nextSeason.seasonNumber}`;
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error(err);
+    location.href = 'home.html';
+  }
+}
+
+function loadSources(sources = {}, subtitles = {}) {
+  if (audioSelect) audioSelect.replaceChildren();
+  if (subtitleSelect) subtitleSelect.replaceChildren();
+
+  if (subtitleSelect) {
+    const subOff = document.createElement('option');
+    subOff.value = "";
+    subOff.textContent = "Off";
+    subtitleSelect.appendChild(subOff);
+  }
+
+  if (audioSelect) {
+    Object.keys(sources).forEach(audioLang => {
+      const opt = document.createElement('option');
+      opt.value = sources[audioLang];
+      opt.textContent = audioLang.toUpperCase();
+      if (audioLang === lang) opt.selected = true;
+      audioSelect.appendChild(opt);
+    });
+  }
+
+  let autoSelectedSubUrl = null;
+
+  if (subtitleSelect) {
+    Object.keys(subtitles).forEach(subLang => {
+      const opt = document.createElement('option');
+      opt.value = subtitles[subLang];
+      opt.textContent = subLang.toUpperCase();
+      
+      if (subLang === lang) {
+        opt.selected = true;
+        autoSelectedSubUrl = subtitles[subLang];
+      }
+      
+      subtitleSelect.appendChild(opt);
+    });
+  }
+
+  if (audioSelect && audioSelect.value) {
+    video.src = audioSelect.value;
+    video.play().catch(() => {});
+  }
+  
+  if (autoSelectedSubUrl) {
+    activateSubtitleTrack(autoSelectedSubUrl);
+  }
+}
+
+function renderEpisodesList() {
+  if (!episodesContainer) return;
+  episodesContainer.replaceChildren();
+  
+  (currentMedia.seasons || []).forEach(season => {
+    const seasonTitle = document.createElement('h4');
+    seasonTitle.style.cssText = 'color: var(--accent-color, #d4af37); margin: 10px 0 6px; font-size: 0.9rem;';
+    seasonTitle.textContent = season.i18n?.[lang]?.title || season.i18n?.es?.title || season.title || `Temporada ${season.seasonNumber}`;
+    episodesContainer.appendChild(seasonTitle);
+
+    (season.episodes || []).forEach(ep => {
+      const btn = document.createElement('a');
+      const isCurrent = season.seasonNumber === requestedSeason && ep.episodeNumber === requestedEp;
+      btn.className = `ep-modal-item${isCurrent ? ' active' : ''}`;
+      const epName = ep.i18n?.[lang]?.title || ep.i18n?.es?.title || ep.title || '';
+      btn.textContent = `E${ep.episodeNumber}: ${epName}`;
+      btn.href = `play.html?id=${encodeURIComponent(mediaId)}&ep=${ep.episodeNumber}&season=${season.seasonNumber}`;
+      episodesContainer.appendChild(btn);
+    });
+  });
+}
+
+// Eventos de controles
+if (playPauseBtn) {
+  playPauseBtn.onclick = () => {
+    if (video.paused) { video.play(); } else { video.pause(); }
+  };
+}
+
+video.onplay = () => { 
+  if (playIcon) playIcon.style.display = 'none'; 
+  if (pauseIcon) pauseIcon.style.display = 'block'; 
+  resetControlsTimer();
+};
+
+video.onpause = () => { 
+  if (playIcon) playIcon.style.display = 'block'; 
+  if (pauseIcon) pauseIcon.style.display = 'none'; 
+  document.body.classList.remove('controls-hidden');
+};
+
+video.ontimeupdate = () => {
+  if (!video.duration) return;
+  const pct = (video.currentTime / video.duration) * 100;
   if (progressFill) progressFill.style.width = `${pct}%`;
-  if (timeDisplay) timeDisplay.textContent = `${formatTime(videoPlayer.currentTime)} / ${formatTime(videoPlayer.duration)}`;
-});
+  if (timeDisplay) timeDisplay.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+};
 
 if (progressBar) {
-  progressBar.addEventListener('click', (e) => {
+  progressBar.onclick = (e) => {
     const rect = progressBar.getBoundingClientRect();
     const pos = (e.clientX - rect.left) / rect.width;
-    videoPlayer.currentTime = pos * videoPlayer.duration;
-  });
+    video.currentTime = pos * video.duration;
+  };
+}
+
+if (audioSelect) {
+  audioSelect.onchange = () => {
+    const time = video.currentTime;
+    video.src = audioSelect.value;
+    video.currentTime = time;
+    video.play().catch(() => {});
+  };
+}
+
+if (subtitleSelect) {
+  subtitleSelect.onchange = () => {
+    activateSubtitleTrack(subtitleSelect.value);
+  };
+}
+
+if (moreBtn && modal) {
+  moreBtn.onclick = () => { modal.hidden = !modal.hidden; };
 }
 
 if (backBtn) {
-  backBtn.addEventListener('click', () => {
-    window.history.back();
-  });
+  backBtn.onclick = () => { location.href = `details.html?id=${encodeURIComponent(mediaId)}`; };
 }
 
-// Carga segura y directa de subtítulos (Sin proxies fallidos y con conversión de Dropbox)
-async function loadSubtitleTrack(videoElement, subtitleUrl, langLabel = 'Español') {
-  const oldTracks = videoElement.querySelectorAll('track');
-  oldTracks.forEach(t => t.remove());
-
-  if (!subtitleUrl) return;
-
-  try {
-    let rawUrl = decodeURIComponent(subtitleUrl.trim());
-    let directUrl = rawUrl
-      .replace("www.dropbox.com", "dl.dropboxusercontent.com")
-      .replace("?dl=0", "")
-      .replace("&dl=0", "")
-      .replace("?raw=1", "");
-
-    const response = await fetch(directUrl);
-    if (!response.ok) throw new Error("Error HTTP al descargar VTT");
-
-    let text = await response.text();
-    text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    if (!text.trim().startsWith("WEBVTT")) {
-      text = "WEBVTT\n\n" + text.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
-    }
-
-    const blob = new Blob([text], { type: 'text/vtt;charset=utf-8' });
-    const blobUrl = URL.createObjectURL(blob);
-
-    const track = document.createElement('track');
-    track.kind = 'subtitles';
-    track.label = langLabel;
-    track.srclang = 'es';
-    track.src = blobUrl;
-    track.default = true;
-
-    videoElement.appendChild(track);
-
-    setTimeout(() => {
-      if (videoElement.textTracks && videoElement.textTracks.length > 0) {
-        for (let i = 0; i < videoElement.textTracks.length; i++) {
-          videoElement.textTracks[i].mode = 'showing';
-        }
-      }
-    }, 150);
-
-  } catch (err) {
-    console.error("Fallo la carga de subtítulos:", err);
+document.addEventListener('keydown', (e) => {
+  if (e.code === 'Space' && e.target.tagName !== 'INPUT' && e.target.tagName !== 'SELECT') {
+    e.preventDefault();
+    if (video.paused) video.play(); else video.pause();
   }
-}
+});
 
-// Extrae todos los mapas de video disponibles por idioma
-function extractVideoSources(obj) {
-  const result = {};
-  if (!obj) return result;
-  if (typeof obj === 'string') {
-    result.es = obj;
-    return result;
+video.onended = () => {
+  if (nextUrl) {
+    location.href = nextUrl;
+  } else {
+    location.href = 'home.html';
   }
-  if (obj.sources && typeof obj.sources === 'object') {
-    for (const [code, val] of Object.entries(obj.sources)) {
-      if (typeof val === 'string' && val.trim()) result[code] = val.trim();
-      else if (val && typeof val === 'object' && (val.videoUrl || val.url || val.video)) {
-        result[code] = val.videoUrl || val.url || val.video;
-      }
-    }
-  }
-  if (Object.keys(result).length === 0) {
-    const single = obj.videoUrl || obj.video || obj.url;
-    if (single) result.es = single;
-  }
-  return result;
-}
+};
 
-// Extrae todos los mapas de subtítulos disponibles por idioma
-function extractSubtitleSources(obj) {
-  const result = {};
-  if (!obj) return result;
-  if (typeof obj === 'string') {
-    result.es = obj;
-    return result;
-  }
-  if (obj.subtitles && typeof obj.subtitles === 'object') {
-    for (const [code, val] of Object.entries(obj.subtitles)) {
-      if (typeof val === 'string' && val.trim()) result[code] = val.trim();
-    }
-  }
-  if (Object.keys(result).length === 0) {
-    const single = obj.subtitleUrl || obj.subUrl || obj.subtitlesUrl;
-    if (single) result.es = single;
-  }
-  return result;
-}
-
-async function initPlayer() {
-  if (!mediaId) {
-    window.location.href = 'index.html';
-    return;
-  }
-  
-  try {
-    const docSnap = await getDoc(doc(db, "content", mediaId));
-    if (!docSnap.exists()) {
-      if (mediaTitle) mediaTitle.textContent = "Contenido no disponible en Firestore";
-      return;
-    }
-    
-    const media = docSnap.data();
-    let title = media.i18n?.[userLang]?.title || media.title || 'Sin título';
-    let targetObject = media;
-
-    const seasons = media.seasons || media.temporadas || [];
-    if (seasons.length > 0) {
-      const season = seasons.find(s => String(s.seasonNumber || s.number || 1) === String(seasonNum)) || seasons[0];
-      const episodes = season.episodes || season.episodios || [];
-      if (episodes.length > 0) {
-        const ep = episodes.find(e => String(e.episodeNumber || e.number || 1) === String(episodeNum)) || episodes[0];
-        if (ep) {
-          targetObject = ep;
-          const epTitle = ep.i18n?.[userLang]?.title || ep.episodeTitle || ep.title || ep.name || `Episodio ${episodeNum}`;
-          title = `${title} - E${episodeNum}: ${epTitle}`;
-        }
-      }
-    }
-
-    const videoMap = extractVideoSources(targetObject);
-    const subtitleMap = extractSubtitleSources(targetObject);
-
-    const availableAudioLangs = Object.keys(videoMap);
-    if (availableAudioLangs.length === 0) {
-      if (mediaTitle) mediaTitle.textContent = "No se encontró URL de video";
-      return;
-    }
-
-    if (mediaTitle) mediaTitle.textContent = title;
-
-    // Seleccionar audio coincidente con idioma del usuario o fallback
-    let selectedAudioLang = availableAudioLangs.includes(userLang)
-      ? userLang
-      : (availableAudioLangs.includes('es') ? 'es' : availableAudioLangs[0]);
-
-    videoPlayer.src = videoMap[selectedAudioLang];
-
-    // Llenar selector de audio
-    if (audioSelect) {
-      audioSelect.innerHTML = availableAudioLangs
-        .map(code => `<option value="${code}" ${code === selectedAudioLang ? 'selected' : ''}>${code.toUpperCase()} (${LANG_NAMES[code] || code})</option>`)
-        .join('');
-
-      audioSelect.addEventListener('change', (e) => {
-        const newLang = e.target.value;
-        if (videoMap[newLang] && videoMap[newLang] !== videoPlayer.src) {
-          const currentTime = videoPlayer.currentTime;
-          const isPaused = videoPlayer.paused;
-          videoPlayer.src = videoMap[newLang];
-          videoPlayer.currentTime = currentTime;
-          if (!isPaused) videoPlayer.play().catch(() => {});
-        }
-      });
-    }
-
-    // Llenar selector de subtítulos
-    if (subtitleSelect) {
-      const availableSubLangs = Object.keys(subtitleMap);
-      subtitleSelect.innerHTML = `<option value="">Off</option>` + availableSubLangs
-        .map(code => `<option value="${code}">${code.toUpperCase()} (${LANG_NAMES[code] || code})</option>`)
-        .join('');
-
-      let selectedSubLang = availableSubLangs.includes(userLang)
-        ? userLang
-        : (availableSubLangs.includes('es') ? 'es' : '');
-
-      if (selectedSubLang && subtitleMap[selectedSubLang]) {
-        subtitleSelect.value = selectedSubLang;
-        loadSubtitleTrack(videoPlayer, subtitleMap[selectedSubLang], LANG_NAMES[selectedSubLang] || selectedSubLang);
-      }
-
-      subtitleSelect.addEventListener('change', (e) => {
-        const subLang = e.target.value;
-        if (subLang && subtitleMap[subLang]) {
-          loadSubtitleTrack(videoPlayer, subtitleMap[subLang], LANG_NAMES[subLang] || subLang);
-        } else {
-          videoPlayer.querySelectorAll('track').forEach(t => t.remove());
-        }
-      });
-    }
-
-    videoPlayer.play().catch(() => {});
-
-  } catch (err) {
-    console.error("Error al iniciar reproductor:", err);
-    if (mediaTitle) mediaTitle.textContent = "Error al conectar con la base de datos";
-  }
-}
-
-initPlayer();
+init();
