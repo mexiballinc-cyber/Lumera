@@ -101,7 +101,7 @@ function renderCatalog() {
     if (dynamicContainer) {
       dynamicContainer.replaceChildren();
 
-      // Agrupar items por categorías reales
+      // Agrupar items por categorías reales guardadas en el documento de contenido
       const categoriesMap = new Map();
       items.forEach(item => {
         const cats = Array.isArray(item.categories) ? item.categories : (item.category ? [item.category] : []);
@@ -111,13 +111,28 @@ function renderCatalog() {
         });
       });
 
-      categoriesMap.forEach((catItems, catName) => {
+      categoriesMap.forEach((catItems, catKey) => {
         if (!catItems.length) return;
 
-        // Traducir nombre de categoría según el idioma de la interfaz
         const selectedLang = lang();
-        const matchedCat = loadedCategories.find(c => (c.i18n?.es?.name || c.name) === catName || c.name === catName);
-        const displayCatName = matchedCat?.i18n?.[selectedLang]?.name || matchedCat?.i18n?.es?.name || catName;
+        
+        // Buscar coincidencia escaneando todos los subcampos i18n de la categoría en Firestore
+        const matchedCat = loadedCategories.find(c => {
+          if (c.id === catKey) return true;
+          if (c.name && c.name.toLowerCase() === catKey.toLowerCase()) return true;
+          if (!c.i18n) return false;
+          return Object.values(c.i18n).some(loc => loc?.name?.toLowerCase() === catKey.toLowerCase());
+        });
+
+        // Extraer el nombre en el idioma activo (i18n.[lang].name -> i18n.es.name -> fallback a catKey)
+        let displayCatName = catKey;
+        if (matchedCat && matchedCat.i18n) {
+          displayCatName = matchedCat.i18n[selectedLang]?.name || 
+                           matchedCat.i18n.es?.name || 
+                           matchedCat.i18n.en?.name || 
+                           matchedCat.name || 
+                           catKey;
+        }
 
         const section = document.createElement('section');
         section.className = 'media-section';
@@ -161,7 +176,7 @@ function renderContinueAndNew() {
     if (typeof entry === 'string') {
       historyMap.set(entry, { id: entry });
     } else if (entry && entry.id) {
-      historyMap.set(entry.id, entry);
+      historyMap.set(entry.id, entry.id ? entry : { id: entry });
     }
   });
 
@@ -223,7 +238,11 @@ function showHero(item, index = 0) {
 function populateFilters() {
   const categories = [...new Set(mediaItems.flatMap((item) => Array.isArray(item.categories) ? item.categories : item.category ? [item.category] : []))].sort((a, b) => String(a).localeCompare(String(b)));
   const years = [...new Set(mediaItems.map((item) => item.year).filter(Boolean))].sort((a, b) => Number(b) - Number(a));
-  if ($('categoryFilter')) categories.forEach((value) => $('categoryFilter').add(new Option(value, value)));
+  if ($('categoryFilter')) categories.forEach((value) => {
+    const matchedCat = loadedCategories.find(c => c.id === value || Object.values(c.i18n || {}).some(loc => loc?.name?.toLowerCase() === value.toLowerCase()));
+    const labelName = matchedCat?.i18n?.[lang()]?.name || matchedCat?.i18n?.es?.name || value;
+    $('categoryFilter').add(new Option(labelName, value));
+  });
   if ($('yearFilter')) years.forEach((value) => $('yearFilter').add(new Option(value, value)));
 }
 
