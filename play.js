@@ -28,7 +28,6 @@ let currentMedia = null;
 let nextUrl = null;
 let hideTimeout = null;
 
-// Control visual de ocultar controles tras inactividad
 function resetControlsTimer() {
   document.body.classList.remove('controls-hidden');
   clearTimeout(hideTimeout);
@@ -58,7 +57,7 @@ function saveHistory(id, season, ep) {
   } catch (e) {}
 }
 
-// Inyección limpia idéntica a la de Play 3 que SI funciona
+// Inyección directa idéntica a la de Play 3 que SI muestra las letras en pantalla
 function activateSubtitleTrack(targetUrl) {
   Array.from(video.querySelectorAll('track')).forEach(t => t.remove());
 
@@ -197,7 +196,6 @@ function renderEpisodesList() {
   });
 }
 
-// Eventos de controles
 if (playPauseBtn) {
   playPauseBtn.onclick = () => {
     if (video.paused) { video.play(); } else { video.pause(); }
