@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta name="theme-color" content="#000000">
+  <title>Lumera — Reproductor</title>
+  <link rel="icon" type="image/png" href="https://i.imgur.com/cCqp6Qt.png">
+  <link rel="stylesheet" href="style.css">
+  <style>
+    body, html { margin: 0; padding: 0; width: 100%; height: 100%; background: #000; overflow: hidden; font-family: sans-serif; }
+    .player-container { position: relative; width: 100vw; height: 100vh; display: flex; align-items: center; justify-content: center; }
+    video { width: 100%; height: 100%; object-fit: contain; }
+    .play-back { position: absolute; top: 20px; left: 20px; z-index: 10; padding: 10px 16px; background: rgba(0,0,0,0.6); color: #fff; border: 1px solid rgba(255,255,255,0.2); border-radius: 20px; text-decoration: none; font-weight: 600; backdrop-filter: blur(10px); }
+    .next-ep-btn { position: absolute; bottom: 40px; right: 30px; z-index: 10; padding: 12px 24px; background: var(--accent-color, #d4af37); color: #000; border: none; border-radius: 30px; font-weight: 800; cursor: pointer; display: flex; align-items: center; gap: 8px; box-shadow: 0 4px 15px rgba(0,0,0,0.5); }
+  </style>
+</head>
+<body>
+  <div class="player-container">
+    <a href="home.html" class="play-back">← Volver</a>
+    <video id="lumeraVideo" controls autoplay playsinline></video>
+    <button id="nextEpBtn" class="next-ep-btn" style="display: none;">Siguiente episodio ▶</button>
+  </div>
+
+  <script type="module">
+    import { db } from './firebase.js';
+    import { doc, getDoc } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
+    import { getLanguage } from './i18n.js';
+
+    const params = new URLSearchParams(location.search);
+    const id = params.get('id');
+    const ep = Number(params.get('ep') || 1);
+    const season = Number(params.get('season') || 1);
+    const type = params.get('type');
+    const lang = getLanguage();
+    const video = document.getElementById('lumeraVideo');
+    const nextBtn = document.getElementById('nextEpBtn');
+
+    let nextEpisodeTarget = null;
+
+    function saveHistory(mediaId, currentSeason, currentEp) {
+      let history = [];
+      try { history = JSON.parse(localStorage.getItem('lumera_continue_watching') || '[]'); } catch { history = []; }
+      history = history.filter(item => (typeof item === 'string' ? item : item.id) !== mediaId);
+      history.unshift({ id: mediaId, season: currentSeason, ep: currentEp, timestamp: Date.now() });
+      localStorage.setItem('lumera_continue_watching', JSON.stringify(history.slice(0, 20)));
+    }
+
+    async function initPlayer() {
+      if (!id) { location.href = 'home.html'; return; }
+      try {
+        const snap = await getDoc(doc(db, 'content', id));
+        if (!snap.exists()) { location.href = 'home.html'; return; }
+        const media = snap.data();
+
+        saveHistory(id, season, ep);
+
+        let videoUrl = '';
+        let trackUrl = '';
+
+        if (media.type === 'movie' || type === 'movie') {
+          videoUrl = media.sources?.[lang] || media.sources?.es || media.videoUrl || '';
+          trackUrl = media.subtitles?.[lang] || media.subtitles?.es || media.subtitleUrl || '';
+        } else {
+          const currentSeasonData = media.seasons?.find(s => Number(s.seasonNumber) === season) || media.seasons?.[0];
+          const currentEpData = currentSeasonData?.episodes?.find(e => Number(e.episodeNumber) === ep);
+          
+          if (currentEpData) {
+            videoUrl = currentEpData.sources?.[lang] || currentEpData.sources?.es || currentEpData.videoUrl || '';
+            trackUrl = currentEpData.subtitles?.[lang] || currentEpData.subtitles?.es || currentEpData.subtitleUrl || '';
+
+            // Verificar si hay un siguiente episodio en la misma temporada
+            const nextEpInSeason = currentSeasonData.episodes.find(e => Number(e.episodeNumber) === ep + 1);
+            if (nextEpInSeason) {
+              nextEpisodeTarget = `play.html?id=${encodeURIComponent(id)}&ep=${ep + 1}&season=${season}`;
+            } else {
+              // Buscar primer episodio de la siguiente temporada
+              const nextSeasonData = media.seasons?.find(s => Number(s.seasonNumber) === season + 1);
+              if (nextSeasonData?.episodes?.length) {
+                const firstEpNextSeason = nextSeasonData.episodes[0].episodeNumber || 1;
+                nextEpisodeTarget = `play.html?id=${encodeURIComponent(id)}&ep=${firstEpNextSeason}&season=${season + 1}`;
+              }
+            }
+          }
+        }
+
+        if (videoUrl) {
+          video.src = videoUrl;
+          if (trackUrl) {
+            const track = document.createElement('track');
+            track.kind = 'subtitles';
+            track.src = trackUrl;
+            track.srclang = lang;
+            track.default = true;
+            video.appendChild(track);
+          }
+        } else {
+          alert('Video no disponible');
+          location.href = 'home.html';
+        }
+
+        if (nextEpisodeTarget) {
+          nextBtn.style.display = 'flex';
+          nextBtn.onclick = () => { location.href = nextEpisodeTarget; };
+        }
+
+        video.onended = () => {
+          if (nextEpisodeTarget) {
+            location.href = nextEpisodeTarget;
+          } else {
+            location.href = 'home.html';
+          }
+        };
+
+      } catch (err) {
+        console.error('Error al reproducir:', err);
+        location.href = 'home.html';
+      }
+    }
+
+    initPlayer();
+  </script>
+</body>
+</html>
