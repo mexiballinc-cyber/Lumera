@@ -32,9 +32,20 @@
     <!-- Pestaña 1: Hero Carousel -->
     <div class="glass-panel" style="padding:20px; margin-bottom:25px;">
       <h3>Gestor de Imágenes Hero</h3>
-      <div style="display:flex; gap:10px; margin-top:10px;">
-        <input type="url" id="heroUrl" placeholder="URL Imagen Imgur" style="flex:1; padding:10px; background:#111; border:1px solid #333; color:#fff;">
-        <button class="hero-btn" onclick="addHero()">Añadir</button>
+      <div style="display:flex; flex-direction:column; gap:10px; margin-top:10px;">
+        <input type="url" id="heroUrl" placeholder="URL Imagen Imgur" style="width:100%; padding:10px; background:#111; border:1px solid #333; color:#fff;">
+        
+        <div style="display:flex; gap:10px;">
+          <select id="heroTargetType" onchange="toggleHeroTarget()" style="padding:10px; background:#111; border:1px solid #333; color:#fff;">
+            <option value="content">Vincular a Título del Catálogo</option>
+            <option value="custom">Link Personalizado / Externo</option>
+          </select>
+          
+          <select id="heroContentSelect" style="flex:1; padding:10px; background:#111; border:1px solid #333; color:#fff;"></select>
+          <input type="text" id="heroCustomLink" placeholder="Ej: details.html?id=... o https://..." style="flex:1; padding:10px; background:#111; border:1px solid #333; color:#fff; display:none;">
+        </div>
+        
+        <button class="hero-btn" onclick="addHero()" style="padding:10px;">Añadir Hero</button>
       </div>
       <h4 style="margin-top:15px; color:var(--text-muted);">Imágenes Activas en Hero:</h4>
       <div id="heroList" class="items-grid"></div>
@@ -70,15 +81,33 @@
     import { db } from './firebase.js';
     import { collection, addDoc, getDocs, deleteDoc, doc } from "https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js";
 
+    window.toggleHeroTarget = function() {
+      const type = document.getElementById('heroTargetType').value;
+      document.getElementById('heroContentSelect').style.display = type === 'content' ? 'block' : 'none';
+      document.getElementById('heroCustomLink').style.display = type === 'custom' ? 'block' : 'none';
+    };
+
     async function loadAllData() {
+      // Cargar Títulos para el selector de Hero
+      const contentSnap = await getDocs(collection(db, "content"));
+      const select = document.getElementById('heroContentSelect');
+      select.innerHTML = '<option value="">-- Seleccionar Título --</option>';
+      contentSnap.forEach(d => {
+        const data = d.data();
+        select.innerHTML += `<option value="${d.id}">${data.title || data.name || d.id}</option>`;
+      });
+
       // Cargar Hero
       const heroSnap = await getDocs(collection(db, "hero_slides"));
       const heroList = document.getElementById('heroList');
       heroList.innerHTML = '';
       heroSnap.forEach(d => {
+        const data = d.data();
+        const targetInfo = data.contentId ? `ID: ${data.contentId}` : (data.customLink || 'Sin vínculo');
         heroList.innerHTML += `
           <div class="item-card">
-            <img src="${d.data().url}">
+            <img src="${data.url}">
+            <div style="font-size:10px; padding:4px; color:#aaa; overflow:hidden; text-overflow:ellipsis; white-space:nowrap;">${targetInfo}</div>
             <button class="delete-btn" onclick="removeItem('hero_slides', '${d.id}')">✕</button>
           </div>
         `;
@@ -113,7 +142,24 @@
 
     window.addHero = async function() {
       const url = document.getElementById('heroUrl').value.trim();
-      if (url) { await addDoc(collection(db, "hero_slides"), { url }); loadAllData(); }
+      const targetType = document.getElementById('heroTargetType').value;
+      const contentId = document.getElementById('heroContentSelect').value;
+      const customLink = document.getElementById('heroCustomLink').value.trim();
+
+      if (url) {
+        const heroData = { url };
+        if (targetType === 'content' && contentId) {
+          heroData.contentId = contentId;
+          heroData.targetType = 'content';
+        } else if (targetType === 'custom' && customLink) {
+          heroData.customLink = customLink;
+          heroData.targetType = 'custom';
+        }
+        await addDoc(collection(db, "hero_slides"), heroData);
+        document.getElementById('heroUrl').value = '';
+        document.getElementById('heroCustomLink').value = '';
+        loadAllData();
+      }
     };
 
     window.addAvatar = async function() {
