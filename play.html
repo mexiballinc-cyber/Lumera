@@ -105,6 +105,10 @@
       border-color: var(--accent-color, #d4af37); background: rgba(212,175,55,0.12);
     }
 
+    body.controls-hidden .play-topbar,
+    body.controls-hidden .play-controls-panel { opacity: 0; pointer-events: none; transform: translateY(8px); }
+    body.controls-hidden .play-topbar { transform: translateY(-8px); }
+
     @media (max-aspect-ratio: 1/1) or (max-width: 600px) {
       .play-shell { display: flex; align-items: center; justify-content: center; background: #000; }
       video { width: 100vw; height: auto; max-height: 85vh; object-fit: contain; }
@@ -203,6 +207,7 @@
 
     let currentMedia = null;
     let nextUrl = null;
+    let currentObjectUrl = null;
 
     function formatTime(seconds) {
       if (isNaN(seconds)) return "00:00";
@@ -220,32 +225,64 @@
       } catch (e) {}
     }
 
-    // Inyección limpia y directa con fallback de enlace de Dropbox
-    function activateSubtitleTrack(targetUrl) {
+    // Carga robusta mediante Blob para evitar bloqueos CORS en subtítulos externos
+    async function activateSubtitleTrack(targetUrl) {
       Array.from(video.querySelectorAll('track')).forEach(t => t.remove());
+      if (currentObjectUrl) {
+        URL.revokeObjectURL(currentObjectUrl);
+        currentObjectUrl = null;
+      }
 
       if (!targetUrl) return;
 
-      let cleanUrl = targetUrl.trim()
-        .replace("www.dropbox.com", "dl.dropboxusercontent.com")
-        .replace("?dl=0", "")
-        .replace("&dl=0", "")
-        .replace("?raw=1", "");
+      try {
+        let cleanUrl = targetUrl.trim()
+          .replace("www.dropbox.com", "dl.dropboxusercontent.com")
+          .replace("?dl=0", "")
+          .replace("&dl=0", "")
+          .replace("?raw=1", "");
 
-      const track = document.createElement('track');
-      track.kind = 'subtitles';
-      track.label = 'Subtítulo';
-      track.srclang = lang;
-      track.src = cleanUrl;
-      track.default = true;
+        const res = await fetch(cleanUrl);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-      video.appendChild(track);
-
-      setTimeout(() => {
-        if (video.textTracks && video.textTracks[0]) {
-          video.textTracks[0].mode = 'showing';
+        let text = await res.text();
+        text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+        if (!text.trim().startsWith("WEBVTT")) {
+          text = "WEBVTT\n\n" + text.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
         }
-      }, 100);
+
+        const blob = new Blob([text], { type: 'text/vtt;charset=utf-8' });
+        currentObjectUrl = URL.createObjectURL(blob);
+
+        const track = document.createElement('track');
+        track.kind = 'subtitles';
+        track.label = 'Subtítulo';
+        track.srclang = lang;
+        track.src = currentObjectUrl;
+        track.default = true;
+
+        video.appendChild(track);
+
+        setTimeout(() => {
+          if (video.textTracks && video.textTracks[0]) {
+            video.textTracks[0].mode = 'showing';
+          }
+        }, 100);
+      } catch (err) {
+        console.warn("Fallo fetch de subtítulo, usando fallback directo:", err);
+        const track = document.createElement('track');
+        track.kind = 'subtitles';
+        track.label = 'Subtítulo';
+        track.srclang = lang;
+        track.src = targetUrl;
+        track.default = true;
+        video.appendChild(track);
+        setTimeout(() => {
+          if (video.textTracks && video.textTracks[0]) {
+            video.textTracks[0].mode = 'showing';
+          }
+        }, 100);
+      }
     }
 
     async function init() {
