@@ -147,7 +147,7 @@
       const card = document.createElement('a');
       const isKidsContent = inKids(item);
       card.className = `media-card${compact ? ' compact-card' : ''}${profile?.isKids ? ' kids-border-active' : ''}`;
-      card.href = `details.html?id=${encodeURIComponent(item.id)}`;
+      card.href = item.targetUrl || `details.html?id=${encodeURIComponent(item.id)}`;
       const poster = posterOf(item);
       const title = titleOf(item);
       const kidsBadgeHtml = isKidsContent ? `<img src="https://i.imgur.com/e0MQHrD.png" class="kids-corner-badge" alt="Kids Badge">` : '';
@@ -182,8 +182,28 @@
     function renderContinueAndNew() {
       let history = [];
       try { history = JSON.parse(localStorage.getItem('lumera_continue_watching') || localStorage.getItem('lumera_watch_history') || '[]'); } catch { history = []; }
-      const ids = new Set(history.map(entry => typeof entry === 'string' ? entry : entry.id));
-      const continuing = mediaItems.filter(item => ids.has(item.id) && (!profile?.isKids || inKids(item)));
+      
+      const historyMap = new Map();
+      history.forEach(entry => {
+        if (typeof entry === 'string') {
+          historyMap.set(entry, { id: entry });
+        } else if (entry && entry.id) {
+          historyMap.set(entry.id, entry);
+        }
+      });
+
+      const continuing = mediaItems
+        .filter(item => historyMap.has(item.id) && (!profile?.isKids || inKids(item)))
+        .map(item => {
+          const saved = historyMap.get(item.id);
+          return {
+            ...item,
+            targetUrl: saved?.episodeId 
+              ? `details.html?id=${encodeURIComponent(item.id)}&episode=${encodeURIComponent(saved.episodeId)}`
+              : `details.html?id=${encodeURIComponent(item.id)}`
+          };
+        });
+
       if ($('continueSection')) $('continueSection').hidden = continuing.length === 0;
       if ($('continueCount')) $('continueCount').textContent = continuing.length ? `${continuing.length}` : '';
       if (continuing.length) renderRow('continueRow', continuing, true);
@@ -195,13 +215,22 @@
     function showHero(item, index=0) {
       if (!item) return;
       heroIndex = index;
-      const banner = item.banner || item.url || item.images?.banner || posterOf(item);
+      const banner = item.images?.banner || item.banner || item.url || posterOf(item);
       if ($('heroImage')) $('heroImage').style.backgroundImage = banner ? `url("${String(banner).replace(/["\\]/g,'')}")` : 'none';
       if ($('heroTitle')) $('heroTitle').textContent = titleOf(item) || t('discoverLumera');
       if ($('heroDescription')) $('heroDescription').textContent = synopsisOf(item) || t('discoverSub');
       if ($('heroMeta')) $('heroMeta').textContent = [item.year, item.ageRating != null ? `${item.ageRating}+` : '', item.type ? prettyType(item) : ''].filter(Boolean).join('  ·  ');
+      
       if ($('heroPlayBtn')) {
-        $('heroPlayBtn').onclick = () => { if (item.id) location.href = `details.html?id=${encodeURIComponent(item.id)}`; };
+        $('heroPlayBtn').onclick = () => {
+          if (item.contentId) {
+            location.href = `details.html?id=${encodeURIComponent(item.contentId)}`;
+          } else if (item.customLink) {
+            location.href = item.customLink;
+          } else if (item.id) {
+            location.href = `details.html?id=${encodeURIComponent(item.id)}`;
+          }
+        };
       }
       if ($('heroPagination')) {
         $('heroPagination').replaceChildren();
@@ -239,7 +268,17 @@
       try {
         const [contentSnap, heroSnap] = await Promise.all([getDocs(collection(db, 'content')), getDocs(collection(db, 'hero_slides'))]);
         mediaItems = contentSnap.docs.map(document => ({ id: document.id, ...document.data() }));
-        heroItems = heroSnap.docs.map(document => ({ id: document.id, ...document.data() })).filter(item => item.url || item.banner);
+        
+        heroItems = heroSnap.docs.map(document => {
+          const data = document.data();
+          const matchedContent = data.contentId ? mediaItems.find(m => m.id === data.contentId) : null;
+          return {
+            id: document.id,
+            ...data,
+            ...(matchedContent || {})
+          };
+        }).filter(item => item.url || item.banner);
+
         populateFilters();
         const featuredMedia = mediaItems.filter(item => !profile?.isKids || inKids(item));
         if (!heroItems.length) heroItems = featuredMedia.filter(item => item.images?.banner || posterOf(item));
