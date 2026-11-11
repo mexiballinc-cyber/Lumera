@@ -101,7 +101,6 @@ function renderCatalog() {
     if (dynamicContainer) {
       dynamicContainer.replaceChildren();
 
-      // Agrupar items por categorías reales guardadas en el documento de contenido
       const categoriesMap = new Map();
       items.forEach(item => {
         const cats = Array.isArray(item.categories) ? item.categories : (item.category ? [item.category] : []);
@@ -114,9 +113,9 @@ function renderCatalog() {
       categoriesMap.forEach((catItems, catKey) => {
         if (!catItems.length) return;
 
-        const selectedLang = lang();
+        const currentLang = lang();
         
-        // Buscar coincidencia escaneando todos los subcampos i18n de la categoría en Firestore
+        // Buscar categoría escaneando i18n
         const matchedCat = loadedCategories.find(c => {
           if (c.id === catKey) return true;
           if (c.name && c.name.toLowerCase() === catKey.toLowerCase()) return true;
@@ -124,10 +123,10 @@ function renderCatalog() {
           return Object.values(c.i18n).some(loc => loc?.name?.toLowerCase() === catKey.toLowerCase());
         });
 
-        // Extraer el nombre en el idioma activo (i18n.[lang].name -> i18n.es.name -> fallback a catKey)
+        // Dar prioridad al idioma activo de la interfaz
         let displayCatName = catKey;
         if (matchedCat && matchedCat.i18n) {
-          displayCatName = matchedCat.i18n[selectedLang]?.name || 
+          displayCatName = matchedCat.i18n[currentLang]?.name || 
                            matchedCat.i18n.es?.name || 
                            matchedCat.i18n.en?.name || 
                            matchedCat.name || 
@@ -176,7 +175,7 @@ function renderContinueAndNew() {
     if (typeof entry === 'string') {
       historyMap.set(entry, { id: entry });
     } else if (entry && entry.id) {
-      historyMap.set(entry.id, entry.id ? entry : { id: entry });
+      historyMap.set(entry.id, entry);
     }
   });
 
@@ -236,13 +235,17 @@ function showHero(item, index = 0) {
 }
 
 function populateFilters() {
+  const currentLang = lang();
   const categories = [...new Set(mediaItems.flatMap((item) => Array.isArray(item.categories) ? item.categories : item.category ? [item.category] : []))].sort((a, b) => String(a).localeCompare(String(b)));
   const years = [...new Set(mediaItems.map((item) => item.year).filter(Boolean))].sort((a, b) => Number(b) - Number(a));
-  if ($('categoryFilter')) categories.forEach((value) => {
-    const matchedCat = loadedCategories.find(c => c.id === value || Object.values(c.i18n || {}).some(loc => loc?.name?.toLowerCase() === value.toLowerCase()));
-    const labelName = matchedCat?.i18n?.[lang()]?.name || matchedCat?.i18n?.es?.name || value;
-    $('categoryFilter').add(new Option(labelName, value));
-  });
+  
+  if ($('categoryFilter')) {
+    categories.forEach((value) => {
+      const matchedCat = loadedCategories.find(c => c.id === value || Object.values(c.i18n || {}).some(loc => loc?.name?.toLowerCase() === value.toLowerCase()));
+      const labelName = matchedCat?.i18n?.[currentLang]?.name || matchedCat?.i18n?.es?.name || value;
+      $('categoryFilter').add(new Option(labelName, value));
+    });
+  }
   if ($('yearFilter')) years.forEach((value) => $('yearFilter').add(new Option(value, value)));
 }
 
