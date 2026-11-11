@@ -220,17 +220,23 @@
       } catch (e) {}
     }
 
-    // Método extraído de Play 3 que soluciona la inyección e instantáneo del track
+    // Inyección limpia y directa con fallback de enlace de Dropbox
     function activateSubtitleTrack(targetUrl) {
       Array.from(video.querySelectorAll('track')).forEach(t => t.remove());
 
       if (!targetUrl) return;
 
+      let cleanUrl = targetUrl.trim()
+        .replace("www.dropbox.com", "dl.dropboxusercontent.com")
+        .replace("?dl=0", "")
+        .replace("&dl=0", "")
+        .replace("?raw=1", "");
+
       const track = document.createElement('track');
       track.kind = 'subtitles';
       track.label = 'Subtítulo';
       track.srclang = lang;
-      track.src = targetUrl;
+      track.src = cleanUrl;
       track.default = true;
 
       video.appendChild(track);
