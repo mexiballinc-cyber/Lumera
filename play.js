@@ -26,20 +26,25 @@ const episodesContainer = $('episodesListContainer');
 
 let currentMedia = null;
 let nextUrl = null;
+let currentObjectUrl = null;
 let hideTimeout = null;
 
 function resetControlsTimer() {
   document.body.classList.remove('controls-hidden');
   clearTimeout(hideTimeout);
   hideTimeout = setTimeout(() => {
-    if (!video.paused) {
+    const isModalOpen = modal && !modal.hidden;
+    if (!video.paused && !video.ended && !isModalOpen) {
       document.body.classList.add('controls-hidden');
     }
-  }, 3500);
+  }, 3000);
 }
 
-document.addEventListener('mousemove', resetControlsTimer);
-document.addEventListener('touchstart', resetControlsTimer);
+['pointermove', 'pointerdown', 'touchstart', 'click', 'keydown'].forEach(evt => {
+  document.addEventListener(evt, resetControlsTimer, { passive: true });
+});
+
+video.addEventListener('playing', resetControlsTimer);
 
 function formatTime(seconds) {
   if (isNaN(seconds)) return "00:00";
@@ -57,26 +62,64 @@ function saveHistory(id, season, ep) {
   } catch (e) {}
 }
 
-// Inyección directa idéntica a la de Play 3 que SI muestra las letras en pantalla
-function activateSubtitleTrack(targetUrl) {
+// Carga robusta mediante Blob para evitar bloqueos CORS en subtítulos externos
+async function activateSubtitleTrack(targetUrl) {
   Array.from(video.querySelectorAll('track')).forEach(t => t.remove());
+  if (currentObjectUrl) {
+    URL.revokeObjectURL(currentObjectUrl);
+    currentObjectUrl = null;
+  }
 
   if (!targetUrl) return;
 
-  const track = document.createElement('track');
-  track.kind = 'subtitles';
-  track.label = 'Subtítulo';
-  track.srclang = lang;
-  track.src = targetUrl;
-  track.default = true;
+  try {
+    let cleanUrl = targetUrl.trim()
+      .replace("www.dropbox.com", "dl.dropboxusercontent.com")
+      .replace("?dl=0", "")
+      .replace("&dl=0", "")
+      .replace("?raw=1", "");
 
-  video.appendChild(track);
+    const res = await fetch(cleanUrl);
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
-  setTimeout(() => {
-    if (video.textTracks && video.textTracks[0]) {
-      video.textTracks[0].mode = 'showing';
+    let text = await res.text();
+    text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
+    if (!text.trim().startsWith("WEBVTT")) {
+      text = "WEBVTT\n\n" + text.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
     }
-  }, 100);
+
+    const blob = new Blob([text], { type: 'text/vtt;charset=utf-8' });
+    currentObjectUrl = URL.createObjectURL(blob);
+
+    const track = document.createElement('track');
+    track.kind = 'subtitles';
+    track.label = 'Subtítulo';
+    track.srclang = lang;
+    track.src = currentObjectUrl;
+    track.default = true;
+
+    video.appendChild(track);
+
+    setTimeout(() => {
+      if (video.textTracks && video.textTracks[0]) {
+        video.textTracks[0].mode = 'showing';
+      }
+    }, 100);
+  } catch (err) {
+    console.warn("Fallo fetch de subtítulo, usando fallback directo:", err);
+    const track = document.createElement('track');
+    track.kind = 'subtitles';
+    track.label = 'Subtítulo';
+    track.srclang = lang;
+    track.src = targetUrl;
+    track.default = true;
+    video.appendChild(track);
+    setTimeout(() => {
+      if (video.textTracks && video.textTracks[0]) {
+        video.textTracks[0].mode = 'showing';
+      }
+    }, 100);
+  }
 }
 
 async function init() {
@@ -154,12 +197,10 @@ function loadSources(sources = {}, subtitles = {}) {
       const opt = document.createElement('option');
       opt.value = subtitles[subLang];
       opt.textContent = subLang.toUpperCase();
-      
       if (subLang === lang) {
         opt.selected = true;
         autoSelectedSubUrl = subtitles[subLang];
       }
-      
       subtitleSelect.appendChild(opt);
     });
   }
@@ -168,16 +209,14 @@ function loadSources(sources = {}, subtitles = {}) {
     video.src = audioSelect.value;
     video.play().catch(() => {});
   }
-  
-  if (autoSelectedSubUrl) {
-    activateSubtitleTrack(autoSelectedSubUrl);
-  }
+
+  if (autoSelectedSubUrl) activateSubtitleTrack(autoSelectedSubUrl);
 }
 
 function renderEpisodesList() {
   if (!episodesContainer) return;
   episodesContainer.replaceChildren();
-  
+
   (currentMedia.seasons || []).forEach(season => {
     const seasonTitle = document.createElement('h4');
     seasonTitle.style.cssText = 'color: var(--accent-color, #d4af37); margin: 10px 0 6px; font-size: 0.9rem;';
@@ -202,15 +241,15 @@ if (playPauseBtn) {
   };
 }
 
-video.onplay = () => { 
-  if (playIcon) playIcon.style.display = 'none'; 
-  if (pauseIcon) pauseIcon.style.display = 'block'; 
+video.onplay = () => {
+  if (playIcon) playIcon.style.display = 'none';
+  if (pauseIcon) pauseIcon.style.display = 'block';
   resetControlsTimer();
 };
 
-video.onpause = () => { 
-  if (playIcon) playIcon.style.display = 'block'; 
-  if (pauseIcon) pauseIcon.style.display = 'none'; 
+video.onpause = () => {
+  if (playIcon) playIcon.style.display = 'block';
+  if (pauseIcon) pauseIcon.style.display = 'none';
   document.body.classList.remove('controls-hidden');
 };
 
