@@ -115,20 +115,29 @@ function renderCatalog() {
 
         const currentLang = lang();
         
-        // Buscar categoría escaneando i18n
+        // 1. Buscar coincidencia en la colección categories
         const matchedCat = loadedCategories.find(c => {
           if (c.id === catKey) return true;
           if (c.name && c.name.toLowerCase() === catKey.toLowerCase()) return true;
           if (!c.i18n) return false;
-          return Object.values(c.i18n).some(loc => loc?.name?.toLowerCase() === catKey.toLowerCase());
+          return Object.values(c.i18n).some(loc => {
+            const val = typeof loc === 'string' ? loc : loc?.name;
+            return val?.toLowerCase() === catKey.toLowerCase();
+          });
         });
 
-        // Dar prioridad al idioma activo de la interfaz
+        // 2. Extraer el nombre según la estructura guardada en Firestore
         let displayCatName = catKey;
         if (matchedCat && matchedCat.i18n) {
-          displayCatName = matchedCat.i18n[currentLang]?.name || 
-                           matchedCat.i18n.es?.name || 
-                           matchedCat.i18n.en?.name || 
+          const langEntry = matchedCat.i18n[currentLang];
+          const esEntry = matchedCat.i18n.es;
+          const enEntry = matchedCat.i18n.en;
+
+          const getVal = (entry) => (typeof entry === 'object' ? entry?.name : entry);
+
+          displayCatName = getVal(langEntry) || 
+                           getVal(esEntry) || 
+                           getVal(enEntry) || 
                            matchedCat.name || 
                            catKey;
         }
@@ -241,8 +250,18 @@ function populateFilters() {
   
   if ($('categoryFilter')) {
     categories.forEach((value) => {
-      const matchedCat = loadedCategories.find(c => c.id === value || Object.values(c.i18n || {}).some(loc => loc?.name?.toLowerCase() === value.toLowerCase()));
-      const labelName = matchedCat?.i18n?.[currentLang]?.name || matchedCat?.i18n?.es?.name || value;
+      const matchedCat = loadedCategories.find(c => {
+        if (c.id === value) return true;
+        if (c.name && c.name.toLowerCase() === value.toLowerCase()) return true;
+        if (!c.i18n) return false;
+        return Object.values(c.i18n).some(loc => {
+          const val = typeof loc === 'string' ? loc : loc?.name;
+          return val?.toLowerCase() === value.toLowerCase();
+        });
+      });
+
+      const getVal = (entry) => (typeof entry === 'object' ? entry?.name : entry);
+      const labelName = getVal(matchedCat?.i18n?.[currentLang]) || getVal(matchedCat?.i18n?.es) || value;
       $('categoryFilter').add(new Option(labelName, value));
     });
   }
