@@ -15,10 +15,10 @@ const TYPE_LABELS = {
 };
 
 const PARTICIPANTS_LABELS = {
-  es: { cast: 'Reparto y Participantes', director: 'Dirección' },
-  en: { cast: 'Cast & Participants', director: 'Director' },
-  pt: { cast: 'Elenco e Participantes', director: 'Direção' },
-  fr: { cast: 'Casting et Participants', director: 'Réalisation' }
+  es: { cast: 'Reparto y Participantes', director: 'Dirección', more: 'Leer más', less: 'Leer menos' },
+  en: { cast: 'Cast & Participants', director: 'Director', more: 'Read more', less: 'Read less' },
+  pt: { cast: 'Elenco e Participantes', director: 'Direção', more: 'Ler mais', less: 'Ler menos' },
+  fr: { cast: 'Casting et Participants', director: 'Réalisation', more: 'Lire la suite', less: 'Lire moins' }
 };
 
 function textFor(item, key) {
@@ -45,7 +45,12 @@ async function loadMediaDetails() {
     $('mediaYear').textContent = media.year || '';
     $('mediaAge').textContent = media.ageRating ? `${media.ageRating}+` : '';
     $('mediaType').textContent = TYPE_LABELS[language]?.[media.type] || media.type || '';
-    $('mediaSynopsis').textContent = textFor(media, 'synopsis') || t('noDescription');
+
+    const synopsisEl = $('mediaSynopsis');
+    const synopsisText = textFor(media, 'synopsis') || t('noDescription');
+    synopsisEl.textContent = synopsisText;
+    setupSynopsisToggle(synopsisEl, synopsisText);
+
     document.title = `${$('mediaTitle').textContent} — Lumera`;
 
     const mainPlayBtn = $('mainPlayBtn');
@@ -76,6 +81,30 @@ async function loadMediaDetails() {
     console.error('No se cargaron detalles:', error);
     showError(t('detailsLoadError'));
   }
+}
+
+function setupSynopsisToggle(synopsisEl, text) {
+  const prevBtn = $('synopsisToggleBtn');
+  if (prevBtn) prevBtn.remove();
+  synopsisEl.classList.remove('is-clamped');
+
+  if (!text || text.length < 150) return;
+
+  synopsisEl.classList.add('is-clamped');
+  const btn = document.createElement('button');
+  btn.type = 'button';
+  btn.id = 'synopsisToggleBtn';
+  btn.className = 'synopsis-toggle-btn';
+  btn.textContent = PARTICIPANTS_LABELS[language]?.more || 'Leer más';
+
+  btn.addEventListener('click', () => {
+    const clamped = synopsisEl.classList.toggle('is-clamped');
+    btn.textContent = clamped
+      ? (PARTICIPANTS_LABELS[language]?.more || 'Leer más')
+      : (PARTICIPANTS_LABELS[language]?.less || 'Leer menos');
+  });
+
+  synopsisEl.insertAdjacentElement('afterend', btn);
 }
 
 function renderEpisodes(media) {
@@ -119,8 +148,8 @@ function renderParticipants(media) {
   if (!participantsSection) {
     participantsSection = document.createElement('section');
     participantsSection.id = 'participantsSection';
-    participantsSection.className = 'media-section participants-block';
-    const parent = $('episodesSection')?.parentElement || document.querySelector('.catalog-area') || document.body;
+    participantsSection.className = 'participants-block';
+    const parent = $('episodesSection')?.parentElement || document.body;
     parent.appendChild(participantsSection);
   }
 
@@ -142,21 +171,21 @@ function renderParticipants(media) {
   participantsSection.hidden = false;
 
   const titleHeading = document.createElement('h2');
-  titleHeading.style.cssText = 'font-size: 1.6rem; font-weight: 800; margin-bottom: 16px; color: var(--text-main); font-family: var(--font-display);';
+  titleHeading.className = 'participants-heading';
   titleHeading.textContent = PARTICIPANTS_LABELS[language]?.cast || 'Reparto y Participantes';
   participantsSection.appendChild(titleHeading);
 
   if (rawDirector) {
     const dirBox = document.createElement('div');
-    dirBox.style.cssText = 'margin-bottom: 14px; font-size: 1.15rem; line-height: 1.6;';
+    dirBox.className = 'participants-director';
     dirBox.innerHTML = `<strong style="color: var(--accent-color, #d4af37); font-weight: 700;">${PARTICIPANTS_LABELS[language]?.director || 'Dirección'}:</strong> <span style="font-weight: 600; color: #fff;">${escapeHtml(rawDirector)}</span>`;
     participantsSection.appendChild(dirBox);
   }
 
   if (rawCast) {
     const castBox = document.createElement('div');
-    castBox.style.cssText = 'font-size: 1.15rem; line-height: 1.6; padding: 18px; background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.08); border-radius: 16px;';
-    castBox.innerHTML = `<strong style="display: block; font-size: 1.25rem; font-weight: 800; margin-bottom: 8px; color: var(--accent-color, #d4af37);">${PARTICIPANTS_LABELS[language]?.cast || 'Reparto'}:</strong> <span style="font-weight: 600; color: #e7e4dc; font-size: 1.05rem;">${escapeHtml(rawCast)}</span>`;
+    castBox.className = 'participants-card';
+    castBox.innerHTML = `<span class="participants-card-label">${PARTICIPANTS_LABELS[language]?.cast || 'Reparto'}:</span><span class="participants-card-text">${escapeHtml(rawCast)}</span>`;
     participantsSection.appendChild(castBox);
   }
 }
