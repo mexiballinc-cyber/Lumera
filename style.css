@@ -46,14 +46,15 @@ svg { display: block; width: 21px; height: 21px; fill: none; stroke: currentColo
   animation: rgbGlow 3.5s infinite linear;
 }
 
-.kids-corner-badge {
+.poster-frame img.kids-corner-badge {
   position: absolute;
   top: 8px;
   right: 8px;
-  width: 28px;
-  height: 28px;
+  width: 26px !important;
+  height: 26px !important;
   z-index: 5;
   object-fit: contain;
+  transform: none !important;
   filter: drop-shadow(0 2px 4px rgba(0, 0, 0, 0.8));
   pointer-events: none;
 }
