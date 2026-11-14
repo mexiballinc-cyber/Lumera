@@ -34,15 +34,14 @@ svg { display: block; width: 21px; height: 21px; fill: none; stroke: currentColo
 
 /* ANIMACIÓN RGB DINÁMICA PARA PERFILES Y CONTENIDO KIDS */
 @keyframes rgbGlow {
-  0% { border-color: #ff0055; box-shadow: 0 0 16px rgba(255, 0, 85, 0.6); }
-  33% { border-color: #00e5ff; box-shadow: 0 0 16px rgba(0, 229, 255, 0.6); }
-  66% { border-color: #7600ff; box-shadow: 0 0 16px rgba(118, 0, 255, 0.6); }
-  100% { border-color: #ff0055; box-shadow: 0 0 16px rgba(255, 0, 85, 0.6); }
+  0% { box-shadow: 0 0 16px rgba(255, 0, 85, 0.65); }
+  33% { box-shadow: 0 0 16px rgba(0, 229, 255, 0.65); }
+  66% { box-shadow: 0 0 16px rgba(118, 0, 255, 0.65); }
+  100% { box-shadow: 0 0 16px rgba(255, 0, 85, 0.65); }
 }
 
 .kids-profile-card,
-.kids-border-active {
-  border: 2px solid #ff0055 !important;
+.kids-border-active .poster-frame {
   animation: rgbGlow 3.5s infinite linear;
 }
 
