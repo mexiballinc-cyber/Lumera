@@ -6,6 +6,7 @@ const params = new URLSearchParams(window.location.search);
 const mediaId = params.get('id');
 const requestedEp = Number(params.get('ep') || 1);
 const requestedSeason = Number(params.get('season') || 1);
+const requestedTime = Math.max(0, Number(params.get('t') || 0));
 const lang = getLanguage();
 const $ = id => document.getElementById(id);
 
@@ -17,8 +18,17 @@ const progressBar = $('progressBar');
 const progressFill = $('progressFill');
 const timeDisplay = $('timeDisplay');
 const mediaTitle = $('mediaTitle');
-const audioSelect = $('audioSelect');
-const subtitleSelect = $('subtitleSelect');
+
+const audioWrap = $('audioWrap');
+const audioBtn = $('audioBtn');
+const audioLabel = $('audioLabel');
+const audioMenu = $('audioMenu');
+
+const subtitleWrap = $('subtitleWrap');
+const subtitleBtn = $('subtitleBtn');
+const subtitleLabel = $('subtitleLabel');
+const subtitleMenu = $('subtitleMenu');
+
 const backBtn = $('backBtn');
 const moreBtn = $('moreEpisodesBtn');
 const modal = $('episodesModal');
@@ -28,13 +38,35 @@ let currentMedia = null;
 let nextUrl = null;
 let currentObjectUrl = null;
 let hideTimeout = null;
+let currentAudioUrl = '';
+let currentSubtitleUrl = '';
+let initialSeekApplied = false;
+let lastSavedSecond = -1;
+
+// Aplicar color de acento guardado en el reproductor
+const savedAccent = localStorage.getItem('lumera_accent_color');
+if (savedAccent && /^#[\da-f]{6}$/i.test(savedAccent)) {
+  document.documentElement.style.setProperty('--accent-color', savedAccent);
+  document.documentElement.style.setProperty('--accent-glow', `${savedAccent}55`);
+}
+
+function isAnyDropdownOpen() {
+  return (audioMenu && !audioMenu.hidden) || (subtitleMenu && !subtitleMenu.hidden);
+}
+
+function closeAllDropdowns() {
+  if (audioMenu) audioMenu.hidden = true;
+  if (audioWrap) audioWrap.classList.remove('open');
+  if (subtitleMenu) subtitleMenu.hidden = true;
+  if (subtitleWrap) subtitleWrap.classList.remove('open');
+}
 
 function resetControlsTimer() {
   document.body.classList.remove('controls-hidden');
   clearTimeout(hideTimeout);
   hideTimeout = setTimeout(() => {
     const isModalOpen = modal && !modal.hidden;
-    if (!video.paused && !video.ended && !isModalOpen) {
+    if (!video.paused && !video.ended && !isModalOpen && !isAnyDropdownOpen()) {
       document.body.classList.add('controls-hidden');
     }
   }, 3000);
@@ -43,6 +75,38 @@ function resetControlsTimer() {
 ['pointermove', 'pointerdown', 'touchstart', 'click', 'keydown'].forEach(evt => {
   document.addEventListener(evt, resetControlsTimer, { passive: true });
 });
+
+document.addEventListener('click', (e) => {
+  if (audioWrap && !audioWrap.contains(e.target) && subtitleWrap && !subtitleWrap.contains(e.target)) {
+    closeAllDropdowns();
+  }
+});
+
+if (audioBtn && audioMenu) {
+  audioBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const willOpen = audioMenu.hidden;
+    closeAllDropdowns();
+    if (willOpen) {
+      audioMenu.hidden = false;
+      audioWrap?.classList.add('open');
+    }
+    resetControlsTimer();
+  });
+}
+
+if (subtitleBtn && subtitleMenu) {
+  subtitleBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    const willOpen = subtitleMenu.hidden;
+    closeAllDropdowns();
+    if (willOpen) {
+      subtitleMenu.hidden = false;
+      subtitleWrap?.classList.add('open');
+    }
+    resetControlsTimer();
+  });
+}
 
 video.addEventListener('playing', resetControlsTimer);
 
@@ -53,14 +117,50 @@ function formatTime(seconds) {
   return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
-function saveHistory(id, season, ep) {
+function saveHistory(id, season, ep, time = 0) {
+  if (!id) return;
   try {
     let history = JSON.parse(localStorage.getItem('lumera_continue_watching') || '[]');
     history = history.filter(item => (typeof item === 'string' ? item : item.id) !== id);
-    history.unshift({ id, season, ep, updatedAt: Date.now() });
+    history.unshift({
+      id,
+      season,
+      ep,
+      time: Math.max(0, Math.floor(Number(time) || 0)),
+      updatedAt: Date.now()
+    });
     localStorage.setItem('lumera_continue_watching', JSON.stringify(history.slice(0, 25)));
   } catch (e) {}
 }
+
+function removeFromHistory(id) {
+  if (!id) return;
+  ['lumera_continue_watching', 'lumera_watch_history'].forEach(storageKey => {
+    try {
+      const raw = localStorage.getItem(storageKey);
+      if (!raw) return;
+      const list = JSON.parse(raw);
+      if (!Array.isArray(list)) return;
+      const filtered = list.filter(item => (typeof item === 'string' ? item : item?.id) !== id);
+      localStorage.setItem(storageKey, JSON.stringify(filtered));
+    } catch (e) {}
+  });
+}
+
+function applyResumeSeek() {
+  if (initialSeekApplied || requestedTime <= 0) return;
+  if (!Number.isFinite(video.duration) || video.duration <= 0) return;
+  const safeTarget = Math.min(requestedTime, Math.max(0, video.duration - 2));
+  if (safeTarget > 0) {
+    try {
+      video.currentTime = safeTarget;
+      initialSeekApplied = true;
+    } catch (e) {}
+  }
+}
+
+video.addEventListener('loadedmetadata', applyResumeSeek);
+video.addEventListener('canplay', applyResumeSeek);
 
 // Carga robusta mediante Blob para evitar bloqueos CORS en subtítulos externos
 async function activateSubtitleTrack(targetUrl) {
@@ -129,7 +229,7 @@ async function init() {
     if (!snap.exists()) { location.href = 'home.html'; return; }
     currentMedia = snap.data();
 
-    saveHistory(mediaId, requestedSeason, requestedEp);
+    saveHistory(mediaId, requestedSeason, requestedEp, requestedTime);
 
     const isSeries = currentMedia.type === 'series';
     const title = currentMedia.i18n?.[lang]?.title || currentMedia.i18n?.es?.title || currentMedia.title || 'Lumera';
@@ -169,48 +269,105 @@ async function init() {
   }
 }
 
+function updateMenuSelection(menuEl, selectedValue) {
+  if (!menuEl) return;
+  menuEl.querySelectorAll('.custom-dropdown-option').forEach(btn => {
+    const isSelected = btn.dataset.value === selectedValue;
+    btn.classList.toggle('active', isSelected);
+  });
+}
+
 function loadSources(sources = {}, subtitles = {}) {
-  if (audioSelect) audioSelect.replaceChildren();
-  if (subtitleSelect) subtitleSelect.replaceChildren();
+  const audioKeys = Object.keys(sources);
+  let selectedAudioKey = audioKeys.includes(lang) ? lang : (audioKeys[0] || '');
+  currentAudioUrl = selectedAudioKey ? sources[selectedAudioKey] : '';
 
-  if (subtitleSelect) {
-    const subOff = document.createElement('option');
-    subOff.value = "";
-    subOff.textContent = "Off";
-    subtitleSelect.appendChild(subOff);
-  }
+  if (audioLabel) audioLabel.textContent = selectedAudioKey ? selectedAudioKey.toUpperCase() : '—';
 
-  if (audioSelect) {
-    Object.keys(sources).forEach(audioLang => {
-      const opt = document.createElement('option');
-      opt.value = sources[audioLang];
-      opt.textContent = audioLang.toUpperCase();
-      if (audioLang === lang) opt.selected = true;
-      audioSelect.appendChild(opt);
+  if (audioMenu) {
+    audioMenu.replaceChildren();
+    audioKeys.forEach(audioLang => {
+      const url = sources[audioLang];
+      const optBtn = document.createElement('button');
+      optBtn.type = 'button';
+      optBtn.className = `custom-dropdown-option${audioLang === selectedAudioKey ? ' active' : ''}`;
+      optBtn.dataset.value = url;
+      optBtn.textContent = audioLang.toUpperCase();
+
+      optBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        if (currentAudioUrl !== url) {
+          const time = video.currentTime;
+          currentAudioUrl = url;
+          video.src = url;
+          video.currentTime = time;
+          video.play().catch(() => {});
+        }
+        if (audioLabel) audioLabel.textContent = audioLang.toUpperCase();
+        updateMenuSelection(audioMenu, url);
+        closeAllDropdowns();
+        resetControlsTimer();
+      });
+
+      audioMenu.appendChild(optBtn);
     });
   }
 
-  let autoSelectedSubUrl = null;
+  const subKeys = Object.keys(subtitles);
+  const selectedSubKey = subKeys.includes(lang) ? lang : '';
+  currentSubtitleUrl = selectedSubKey ? subtitles[selectedSubKey] : '';
 
-  if (subtitleSelect) {
-    Object.keys(subtitles).forEach(subLang => {
-      const opt = document.createElement('option');
-      opt.value = subtitles[subLang];
-      opt.textContent = subLang.toUpperCase();
-      if (subLang === lang) {
-        opt.selected = true;
-        autoSelectedSubUrl = subtitles[subLang];
-      }
-      subtitleSelect.appendChild(opt);
+  if (subtitleLabel) subtitleLabel.textContent = selectedSubKey ? selectedSubKey.toUpperCase() : 'Off';
+
+  if (subtitleMenu) {
+    subtitleMenu.replaceChildren();
+
+    const offBtn = document.createElement('button');
+    offBtn.type = 'button';
+    offBtn.className = `custom-dropdown-option${!currentSubtitleUrl ? ' active' : ''}`;
+    offBtn.dataset.value = '';
+    offBtn.textContent = 'Off';
+    offBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      currentSubtitleUrl = '';
+      if (subtitleLabel) subtitleLabel.textContent = 'Off';
+      updateMenuSelection(subtitleMenu, '');
+      activateSubtitleTrack('');
+      closeAllDropdowns();
+      resetControlsTimer();
+    });
+    subtitleMenu.appendChild(offBtn);
+
+    subKeys.forEach(subLang => {
+      const url = subtitles[subLang];
+      const optBtn = document.createElement('button');
+      optBtn.type = 'button';
+      optBtn.className = `custom-dropdown-option${subLang === selectedSubKey ? ' active' : ''}`;
+      optBtn.dataset.value = url;
+      optBtn.textContent = subLang.toUpperCase();
+
+      optBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        currentSubtitleUrl = url;
+        if (subtitleLabel) subtitleLabel.textContent = subLang.toUpperCase();
+        updateMenuSelection(subtitleMenu, url);
+        activateSubtitleTrack(url);
+        closeAllDropdowns();
+        resetControlsTimer();
+      });
+
+      subtitleMenu.appendChild(optBtn);
     });
   }
 
-  if (audioSelect && audioSelect.value) {
-    video.src = audioSelect.value;
+  if (currentAudioUrl) {
+    video.src = currentAudioUrl;
     video.play().catch(() => {});
   }
 
-  if (autoSelectedSubUrl) activateSubtitleTrack(autoSelectedSubUrl);
+  if (currentSubtitleUrl) {
+    activateSubtitleTrack(currentSubtitleUrl);
+  }
 }
 
 function renderEpisodesList() {
@@ -251,6 +408,9 @@ video.onpause = () => {
   if (playIcon) playIcon.style.display = 'block';
   if (pauseIcon) pauseIcon.style.display = 'none';
   document.body.classList.remove('controls-hidden');
+  if (video.duration && !video.ended && video.currentTime > 3 && video.currentTime < video.duration - 5) {
+    saveHistory(mediaId, requestedSeason, requestedEp, video.currentTime);
+  }
 };
 
 video.ontimeupdate = () => {
@@ -258,37 +418,45 @@ video.ontimeupdate = () => {
   const pct = (video.currentTime / video.duration) * 100;
   if (progressFill) progressFill.style.width = `${pct}%`;
   if (timeDisplay) timeDisplay.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+
+  const currentSec = Math.floor(video.currentTime);
+  if (currentSec > 3 && currentSec < video.duration - 5 && Math.abs(currentSec - lastSavedSecond) >= 3) {
+    lastSavedSecond = currentSec;
+    saveHistory(mediaId, requestedSeason, requestedEp, currentSec);
+  }
 };
+
+window.addEventListener('pagehide', () => {
+  if (video.duration && !video.ended && video.currentTime > 3 && video.currentTime < video.duration - 5) {
+    saveHistory(mediaId, requestedSeason, requestedEp, video.currentTime);
+  }
+});
 
 if (progressBar) {
   progressBar.onclick = (e) => {
     const rect = progressBar.getBoundingClientRect();
     const pos = (e.clientX - rect.left) / rect.width;
     video.currentTime = pos * video.duration;
-  };
-}
-
-if (audioSelect) {
-  audioSelect.onchange = () => {
-    const time = video.currentTime;
-    video.src = audioSelect.value;
-    video.currentTime = time;
-    video.play().catch(() => {});
-  };
-}
-
-if (subtitleSelect) {
-  subtitleSelect.onchange = () => {
-    activateSubtitleTrack(subtitleSelect.value);
+    if (video.duration && video.currentTime < video.duration - 5) {
+      saveHistory(mediaId, requestedSeason, requestedEp, video.currentTime);
+    }
   };
 }
 
 if (moreBtn && modal) {
-  moreBtn.onclick = () => { modal.hidden = !modal.hidden; };
+  moreBtn.onclick = () => {
+    closeAllDropdowns();
+    modal.hidden = !modal.hidden;
+  };
 }
 
 if (backBtn) {
-  backBtn.onclick = () => { location.href = `details.html?id=${encodeURIComponent(mediaId)}`; };
+  backBtn.onclick = () => {
+    if (video.duration && !video.ended && video.currentTime > 3 && video.currentTime < video.duration - 5) {
+      saveHistory(mediaId, requestedSeason, requestedEp, video.currentTime);
+    }
+    location.href = `details.html?id=${encodeURIComponent(mediaId)}`;
+  };
 }
 
 document.addEventListener('keydown', (e) => {
@@ -300,8 +468,16 @@ document.addEventListener('keydown', (e) => {
 
 video.onended = () => {
   if (nextUrl) {
+    const nextParams = new URL(nextUrl, location.origin).searchParams;
+    saveHistory(
+      mediaId,
+      Number(nextParams.get('season') || requestedSeason),
+      Number(nextParams.get('ep') || requestedEp + 1),
+      0
+    );
     location.href = nextUrl;
   } else {
+    removeFromHistory(mediaId);
     location.href = 'home.html';
   }
 };
