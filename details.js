@@ -15,20 +15,69 @@ const TYPE_LABELS = {
 };
 
 const PARTICIPANTS_LABELS = {
-  es: { cast: 'Reparto y Participantes', director: 'Dirección', more: 'Leer más', less: 'Leer menos' },
-  en: { cast: 'Cast & Participants', director: 'Director', more: 'Read more', less: 'Read less' },
-  pt: { cast: 'Elenco e Participantes', director: 'Direção', more: 'Ler mais', less: 'Ler menos' },
-  fr: { cast: 'Casting et Participants', director: 'Réalisation', more: 'Lire la suite', less: 'Lire moins' }
+  es: { cast: 'Reparto y Participantes', director: 'Dirección', more: 'Leer más', less: 'Leer menos', trailer: 'Ver tráiler' },
+  en: { cast: 'Cast & Participants', director: 'Director', more: 'Read more', less: 'Read less', trailer: 'Watch trailer' },
+  pt: { cast: 'Elenco e Participantes', director: 'Direção', more: 'Ler mais', less: 'Ler menos', trailer: 'Ver trailer' },
+  fr: { cast: 'Casting et Participants', director: 'Réalisation', more: 'Lire la suite', less: 'Lire moins', trailer: 'Voir la bande-annonce' }
 };
 
 function textFor(item, key) {
   return item.i18n?.[language]?.[key] || item.i18n?.es?.[key] || item[key] || '';
 }
 
+function trailerFor(item) {
+  return item.trailers?.[language] || item.trailers?.es || item.trailers?.en || item.trailerUrl || item.trailer || '';
+}
+
 function showError(message) {
   $('detailsError').textContent = message;
   $('detailsError').hidden = false;
   $('mediaTitle').textContent = t('detailsUnavailable');
+}
+
+function setupTrailer(media, displayTitle) {
+  const trailerUrl = trailerFor(media);
+  const trailerBtn = $('trailerBtn');
+  const trailerModal = $('trailerModal');
+  const trailerVideo = $('trailerVideo');
+  const closeTrailerBtn = $('closeTrailerBtn');
+
+  if (!trailerBtn || !trailerUrl) return;
+
+  if ($('trailerBtnLabel')) {
+    $('trailerBtnLabel').textContent = PARTICIPANTS_LABELS[language]?.trailer || 'Ver tráiler';
+  }
+  trailerBtn.hidden = false;
+
+  const stopAndClose = () => {
+    if (trailerVideo) {
+      trailerVideo.pause();
+      trailerVideo.removeAttribute('src');
+      trailerVideo.load();
+    }
+    if (trailerModal?.open) trailerModal.close();
+  };
+
+  trailerBtn.onclick = () => {
+    if (!trailerModal || !trailerVideo) {
+      window.open(trailerUrl, '_blank', 'noopener');
+      return;
+    }
+    if ($('trailerModalTitle')) {
+      $('trailerModalTitle').textContent = `${displayTitle} — ${PARTICIPANTS_LABELS[language]?.trailer || 'Tráiler'}`;
+    }
+    trailerVideo.src = trailerUrl;
+    trailerModal.showModal();
+    trailerVideo.play().catch(() => {});
+  };
+
+  if (closeTrailerBtn) closeTrailerBtn.onclick = stopAndClose;
+  if (trailerModal) {
+    trailerModal.addEventListener('close', stopAndClose);
+    trailerModal.addEventListener('click', (event) => {
+      if (event.target === trailerModal) stopAndClose();
+    });
+  }
 }
 
 async function loadMediaDetails() {
@@ -41,7 +90,8 @@ async function loadMediaDetails() {
     const banner = media.images?.banner || media.banner || media.images?.poster || media.poster || '';
     if (banner) $('detailsHero').style.backgroundImage = `url("${banner.replace(/["\\]/g, '')}")`;
     
-    $('mediaTitle').textContent = textFor(media, 'title') || t('untitled');
+    const displayTitle = textFor(media, 'title') || t('untitled');
+    $('mediaTitle').textContent = displayTitle;
     $('mediaYear').textContent = media.year || '';
     $('mediaAge').textContent = media.ageRating ? `${media.ageRating}+` : '';
     $('mediaType').textContent = TYPE_LABELS[language]?.[media.type] || media.type || '';
@@ -51,7 +101,7 @@ async function loadMediaDetails() {
     synopsisEl.textContent = synopsisText;
     setupSynopsisToggle(synopsisEl, synopsisText);
 
-    document.title = `${$('mediaTitle').textContent} — Lumera`;
+    document.title = `${displayTitle} — Lumera`;
 
     const mainPlayBtn = $('mainPlayBtn');
     mainPlayBtn.hidden = false;
@@ -73,6 +123,9 @@ async function loadMediaDetails() {
       $('episodesSection').hidden = false;
       renderEpisodes(media);
     }
+
+    // BOTÓN Y MODAL DE TRÁILER
+    setupTrailer(media, displayTitle);
 
     // SECCIÓN DESTACADA DE PARTICIPANTES/REPARTO ABAJO
     renderParticipants(media);
