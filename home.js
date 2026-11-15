@@ -38,6 +38,7 @@ function escapeAttr(value = '') { return String(value).replace(/[&<>"']/g, (c) =
 function localized(item, key) { const selected = lang(); return item.i18n?.[selected]?.[key] || item.i18n?.es?.[key] || item[key] || ''; }
 function posterOf(item) { return item.images?.poster || item.poster || ''; }
 function synopsisOf(item) { return localized(item, 'synopsis'); }
+function shortSynopsisOf(item) { return localized(item, 'shortSynopsis') || synopsisOf(item); }
 function titleOf(item) { return localized(item, 'title') || item.title || t('discoverLumera'); }
 function inKids(item) { return Number(item.ageRating ?? item.age ?? 99) <= 10; }
 function prettyType(item) { return item.type === 'series' ? t('series') : t('movie'); }
@@ -211,11 +212,11 @@ function renderContinueAndNew() {
 function showHero(item, index = 0) {
   if (!item) return;
   heroIndex = index;
-  const banner = item.images?.banner || item.banner || item.url || posterOf(item);
+  const banner = item.heroUrl || item.url || item.images?.banner || item.banner || posterOf(item);
   if ($('heroImage')) $('heroImage').style.backgroundImage = banner ? `url("${String(banner).replace(/["\\]/g, '')}")` : 'none';
   
   if ($('heroTitle')) $('heroTitle').textContent = titleOf(item) || t('discoverLumera');
-  if ($('heroDescription')) $('heroDescription').textContent = synopsisOf(item) || t('discoverSub');
+  if ($('heroDescription')) $('heroDescription').textContent = shortSynopsisOf(item) || t('discoverSub');
   if ($('heroMeta')) $('heroMeta').textContent = [item.year, item.ageRating != null ? `${item.ageRating}+` : '', item.type ? prettyType(item) : ''].filter(Boolean).join(' · ');
   
   if ($('heroPlayBtn')) {
@@ -300,11 +301,12 @@ async function loadCatalog() {
       const data = entry.data();
       const matchedContent = data.contentId ? mediaItems.find(m => m.id === data.contentId) : null;
       return {
-        id: entry.id,
+        ...(matchedContent || {}),
         ...data,
-        ...(matchedContent || {})
+        id: entry.id,
+        heroUrl: data.url || ''
       };
-    }).filter((item) => item.url || item.banner);
+    }).filter((item) => item.heroUrl || item.url || item.banner);
 
     populateFilters();
 
