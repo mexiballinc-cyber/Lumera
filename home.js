@@ -193,9 +193,14 @@ function renderContinueAndNew() {
     .filter(item => historyMap.has(item.id) && (!profile?.isKids || inKids(item)))
     .map(item => {
       const saved = historyMap.get(item.id);
-      let target = `details.html?id=${encodeURIComponent(item.id)}`;
-      if (saved?.season && saved?.ep) {
-        target = `play.html?id=${encodeURIComponent(item.id)}&ep=${encodeURIComponent(saved.ep)}&season=${encodeURIComponent(saved.season)}`;
+      const savedTime = Math.max(0, Math.floor(Number(saved?.time || 0)));
+      const timeParam = savedTime > 0 ? `&t=${savedTime}` : '';
+
+      let target = `play.html?id=${encodeURIComponent(item.id)}&type=movie${timeParam}`;
+      if (item.type === 'series' || (saved?.season && saved?.ep)) {
+        const s = saved?.season || 1;
+        const e = saved?.ep || 1;
+        target = `play.html?id=${encodeURIComponent(item.id)}&ep=${encodeURIComponent(e)}&season=${encodeURIComponent(s)}${timeParam}`;
       }
       return { ...item, targetUrl: target };
     });
