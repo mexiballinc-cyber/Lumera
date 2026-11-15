@@ -36,6 +36,7 @@
         <div>
           <label class="cms-field"><span data-i18n="contentName">Nombre</span><input id="localizedTitle" class="cms-input" type="text" autocomplete="off" data-i18n-placeholder="titlePlaceholder" placeholder="Nombre en el idioma seleccionado"></label>
           <label class="cms-field"><span data-i18n="description">Descripción</span><textarea id="localizedSynopsis" class="cms-input" data-i18n-placeholder="descriptionPlaceholder" placeholder="Descripción en el idioma seleccionado"></textarea></label>
+          <label class="cms-field"><span>Descripción corta (Banner Hero)</span><input id="localizedShortSynopsis" class="cms-input" type="text" maxlength="140" autocomplete="off" placeholder="Resumen breve de 1 línea para el banner principal"></label>
           <label class="cms-field"><span data-i18n="participants">Participantes</span><input id="localizedParticipants" class="cms-input" type="text" data-i18n-placeholder="participantsPlaceholder" placeholder="Actores, directores, etc."></label>
           
           <!-- SELECTOR DE CATEGORÍA DISPONIBLE TANTO PARA PELÍCULAS COMO PARA SERIES -->
@@ -59,6 +60,7 @@
           <fieldset style="border:0;padding:0;margin:0 0 18px"><legend class="cms-subheading" data-i18n="contentType">¿Serie o película?</legend><div class="cms-type-row"><label><input type="radio" name="contentType" value="movie" checked> <span data-i18n="movie">Película</span></label><label><input type="radio" name="contentType" value="series"> <span data-i18n="series">Serie</span></label></div></fieldset>
           <h2 class="cms-subheading" data-i18n="playbackForLanguage">Video y subtítulos del idioma seleccionado</h2>
           <label class="cms-field"><span data-i18n="videoUrl">URL del video</span><input id="localizedVideo" class="cms-input" type="url" data-i18n-placeholder="videoPlaceholder" placeholder="URL de video"></label>
+          <label class="cms-field"><span>URL del tráiler</span><input id="localizedTrailer" class="cms-input" type="url" placeholder="URL del tráiler en el idioma seleccionado"></label>
           <label class="cms-field"><span data-i18n="subtitleUrl">URL de subtítulos (.vtt)</span><input id="localizedSubtitle" class="cms-input" type="url" data-i18n-placeholder="subtitlePlaceholder" placeholder="URL de subtítulos"></label>
           <p class="cms-hint" data-i18n="subtitleHint">Los subtítulos deben ser un archivo WebVTT (.vtt) accesible por URL.</p>
           <section id="seriesSection" hidden>
