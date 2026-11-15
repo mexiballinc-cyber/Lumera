@@ -5,7 +5,7 @@ import { addDoc, collection, getDocs, deleteDoc, doc, getDoc, updateDoc } from '
 const LOCALES={es:{flag:'🇪🇸',label:'Español'},en:{flag:'🇺🇸',label:'English'},pt:{flag:'🇵🇹',label:'Português'},fr:{flag:'🇫🇷',label:'Français'}};
 const $=(id)=>document.getElementById(id);
 let activeLocale=getLanguage(), seasonsDraft=[], seasonSequence=0, episodeSequence=0, busy=false, editingId=null, editingCatId=null;
-const localizedRecord=()=>({title:'',synopsis:'',participants:'',video:'',subtitles:''});
+const localizedRecord=()=>({title:'',synopsis:'',shortSynopsis:'',participants:'',video:'',trailer:'',subtitles:''});
 const blankContent=()=>({i18n:Object.fromEntries(supportedLanguages.map((lang)=>[lang,localizedRecord()])),seasons:[]});
 let contentDraft=blankContent();
 let loadedCategories = [];
@@ -17,8 +17,10 @@ function captureCurrentLocale(){
  const current=localeData(contentDraft.i18n,activeLocale);
  current.title=$('localizedTitle').value.trim();
  current.synopsis=$('localizedSynopsis').value.trim();
+ current.shortSynopsis=$('localizedShortSynopsis').value.trim();
  current.participants=$('localizedParticipants').value.trim();
  current.video=$('localizedVideo').value.trim();
+ current.trailer=$('localizedTrailer').value.trim();
  current.subtitles=$('localizedSubtitle').value.trim();
  
  document.querySelectorAll('.cms-season').forEach((node)=>{
@@ -40,8 +42,10 @@ function renderCurrentLocale(){
  const current=localeData(contentDraft.i18n,activeLocale);
  $('localizedTitle').value=current.title||'';
  $('localizedSynopsis').value=current.synopsis||'';
+ $('localizedShortSynopsis').value=current.shortSynopsis||'';
  $('localizedParticipants').value=current.participants||'';
  $('localizedVideo').value=current.video||'';
+ $('localizedTrailer').value=current.trailer||'';
  $('localizedSubtitle').value=current.subtitles||'';
  $('activeLanguageLabel').textContent=`${t('activeLanguage') || 'Idioma activo'}: ${LOCALES[activeLocale].flag} ${LOCALES[activeLocale].label}`;
  document.querySelectorAll('[data-locale]').forEach((button)=>button.setAttribute('aria-pressed',String(button.dataset.locale===activeLocale)));
@@ -124,8 +128,10 @@ function resetEditor(){
  seasonsDraft=[];
  $('localizedTitle').value='';
  $('localizedSynopsis').value='';
+ $('localizedShortSynopsis').value='';
  $('localizedParticipants').value='';
  $('localizedVideo').value='';
+ $('localizedTrailer').value='';
  $('localizedSubtitle').value='';
  $('poster').value='';
  $('banner').value='';
@@ -142,8 +148,10 @@ function normalizedLocale(data={},fallbackTitle=''){
  return {
    title: data.title || fallbackTitle || '',
    synopsis: data.synopsis || '',
+   shortSynopsis: data.shortSynopsis || '',
    participants: data.participants || '',
    video: '',
+   trailer: '',
    subtitles: ''
  };
 }
@@ -159,7 +167,11 @@ async function beginEdit(id){
    supportedLanguages.forEach((lang)=>{
      const locale=item.i18n?.[lang]||{};
      contentDraft.i18n[lang]=normalizedLocale(locale, lang==='es' ? (locale.title||item.title||'') : '');
+     if (lang === 'es' && !contentDraft.i18n[lang].shortSynopsis && item.shortSynopsis) {
+       contentDraft.i18n[lang].shortSynopsis = item.shortSynopsis;
+     }
      contentDraft.i18n[lang].video=item.sources?.[lang] || (lang==='es' ? (item.videoUrl||item.video||'') : '');
+     contentDraft.i18n[lang].trailer=item.trailers?.[lang] || (lang==='es' ? (item.trailerUrl||item.trailer||'') : '');
      contentDraft.i18n[lang].subtitles=item.subtitles?.[lang] || (lang==='es' ? (item.subtitleUrl||item.subUrl||'') : '');
    });
    
@@ -218,9 +230,15 @@ async function publishMedia(){
    images:{poster,banner:$('banner').value.trim()},
    i18n:Object.fromEntries(supportedLanguages.map((lang)=>{
      const data=contentDraft.i18n[lang]||localizedRecord();
-     return[lang,{title:data.title,synopsis:data.synopsis,participants:data.participants}];
+     return[lang,{
+       title:data.title,
+       synopsis:data.synopsis,
+       shortSynopsis:data.shortSynopsis,
+       participants:data.participants
+     }];
    })),
    sources:Object.fromEntries(supportedLanguages.map((lang)=>[lang,contentDraft.i18n[lang]?.video||'']).filter(([,value])=>value)),
+   trailers:Object.fromEntries(supportedLanguages.map((lang)=>[lang,contentDraft.i18n[lang]?.trailer||'']).filter(([,value])=>value)),
    subtitles:Object.fromEntries(supportedLanguages.map((lang)=>[lang,contentDraft.i18n[lang]?.subtitles||'']).filter(([,value])=>value))
  };
 
