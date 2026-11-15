@@ -19,15 +19,8 @@ const progressFill = $('progressFill');
 const timeDisplay = $('timeDisplay');
 const mediaTitle = $('mediaTitle');
 
-const audioWrap = $('audioWrap');
-const audioBtn = $('audioBtn');
-const audioLabel = $('audioLabel');
-const audioMenu = $('audioMenu');
-
-const subtitleWrap = $('subtitleWrap');
-const subtitleBtn = $('subtitleBtn');
-const subtitleLabel = $('subtitleLabel');
-const subtitleMenu = $('subtitleMenu');
+const audioSelect = $('audioSelect');
+const subtitleSelect = $('subtitleSelect');
 
 const backBtn = $('backBtn');
 const moreBtn = $('moreEpisodesBtn');
@@ -38,8 +31,6 @@ let currentMedia = null;
 let nextUrl = null;
 let currentObjectUrl = null;
 let hideTimeout = null;
-let currentAudioUrl = '';
-let currentSubtitleUrl = '';
 let initialSeekApplied = false;
 let lastSavedSecond = -1;
 
@@ -50,23 +41,13 @@ if (savedAccent && /^#[\da-f]{6}$/i.test(savedAccent)) {
   document.documentElement.style.setProperty('--accent-glow', `${savedAccent}55`);
 }
 
-function isAnyDropdownOpen() {
-  return (audioMenu && !audioMenu.hidden) || (subtitleMenu && !subtitleMenu.hidden);
-}
-
-function closeAllDropdowns() {
-  if (audioMenu) audioMenu.hidden = true;
-  if (audioWrap) audioWrap.classList.remove('open');
-  if (subtitleMenu) subtitleMenu.hidden = true;
-  if (subtitleWrap) subtitleWrap.classList.remove('open');
-}
-
 function resetControlsTimer() {
   document.body.classList.remove('controls-hidden');
   clearTimeout(hideTimeout);
   hideTimeout = setTimeout(() => {
     const isModalOpen = modal && !modal.hidden;
-    if (!video.paused && !video.ended && !isModalOpen && !isAnyDropdownOpen()) {
+    const isSelectFocused = document.activeElement === audioSelect || document.activeElement === subtitleSelect;
+    if (!video.paused && !video.ended && !isModalOpen && !isSelectFocused) {
       document.body.classList.add('controls-hidden');
     }
   }, 3000);
@@ -75,38 +56,6 @@ function resetControlsTimer() {
 ['pointermove', 'pointerdown', 'touchstart', 'click', 'keydown'].forEach(evt => {
   document.addEventListener(evt, resetControlsTimer, { passive: true });
 });
-
-document.addEventListener('click', (e) => {
-  if (audioWrap && !audioWrap.contains(e.target) && subtitleWrap && !subtitleWrap.contains(e.target)) {
-    closeAllDropdowns();
-  }
-});
-
-if (audioBtn && audioMenu) {
-  audioBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const willOpen = audioMenu.hidden;
-    closeAllDropdowns();
-    if (willOpen) {
-      audioMenu.hidden = false;
-      audioWrap?.classList.add('open');
-    }
-    resetControlsTimer();
-  });
-}
-
-if (subtitleBtn && subtitleMenu) {
-  subtitleBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    const willOpen = subtitleMenu.hidden;
-    closeAllDropdowns();
-    if (willOpen) {
-      subtitleMenu.hidden = false;
-      subtitleWrap?.classList.add('open');
-    }
-    resetControlsTimer();
-  });
-}
 
 video.addEventListener('playing', resetControlsTimer);
 
@@ -269,104 +218,65 @@ async function init() {
   }
 }
 
-function updateMenuSelection(menuEl, selectedValue) {
-  if (!menuEl) return;
-  menuEl.querySelectorAll('.custom-dropdown-option').forEach(btn => {
-    const isSelected = btn.dataset.value === selectedValue;
-    btn.classList.toggle('active', isSelected);
-  });
-}
-
 function loadSources(sources = {}, subtitles = {}) {
-  const audioKeys = Object.keys(sources);
-  let selectedAudioKey = audioKeys.includes(lang) ? lang : (audioKeys[0] || '');
-  currentAudioUrl = selectedAudioKey ? sources[selectedAudioKey] : '';
+  const audioKeys = Object.keys(sources || {});
+  const selectedAudioKey = audioKeys.includes(lang) ? lang : (audioKeys[0] || '');
+  const initialAudioUrl = selectedAudioKey ? sources[selectedAudioKey] : '';
 
-  if (audioLabel) audioLabel.textContent = selectedAudioKey ? selectedAudioKey.toUpperCase() : '—';
-
-  if (audioMenu) {
-    audioMenu.replaceChildren();
-    audioKeys.forEach(audioLang => {
-      const url = sources[audioLang];
-      const optBtn = document.createElement('button');
-      optBtn.type = 'button';
-      optBtn.className = `custom-dropdown-option${audioLang === selectedAudioKey ? ' active' : ''}`;
-      optBtn.dataset.value = url;
-      optBtn.textContent = audioLang.toUpperCase();
-
-      optBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        if (currentAudioUrl !== url) {
-          const time = video.currentTime;
-          currentAudioUrl = url;
-          video.src = url;
-          video.currentTime = time;
-          video.play().catch(() => {});
-        }
-        if (audioLabel) audioLabel.textContent = audioLang.toUpperCase();
-        updateMenuSelection(audioMenu, url);
-        closeAllDropdowns();
-        resetControlsTimer();
+  if (audioSelect) {
+    audioSelect.replaceChildren();
+    if (!audioKeys.length) {
+      audioSelect.add(new Option('—', ''));
+    } else {
+      audioKeys.forEach(audioLang => {
+        const opt = new Option(audioLang.toUpperCase(), sources[audioLang]);
+        if (audioLang === selectedAudioKey) opt.selected = true;
+        audioSelect.add(opt);
       });
+    }
 
-      audioMenu.appendChild(optBtn);
-    });
+    audioSelect.onchange = () => {
+      const nextSrc = audioSelect.value;
+      if (nextSrc && video.src !== nextSrc) {
+        const time = video.currentTime;
+        const wasPaused = video.paused;
+        video.src = nextSrc;
+        video.addEventListener('loadedmetadata', () => {
+          video.currentTime = time;
+          if (!wasPaused) video.play().catch(() => {});
+        }, { once: true });
+      }
+      resetControlsTimer();
+    };
   }
 
-  const subKeys = Object.keys(subtitles);
+  const subKeys = Object.keys(subtitles || {});
   const selectedSubKey = subKeys.includes(lang) ? lang : '';
-  currentSubtitleUrl = selectedSubKey ? subtitles[selectedSubKey] : '';
+  const initialSubUrl = selectedSubKey ? subtitles[selectedSubKey] : '';
 
-  if (subtitleLabel) subtitleLabel.textContent = selectedSubKey ? selectedSubKey.toUpperCase() : 'Off';
-
-  if (subtitleMenu) {
-    subtitleMenu.replaceChildren();
-
-    const offBtn = document.createElement('button');
-    offBtn.type = 'button';
-    offBtn.className = `custom-dropdown-option${!currentSubtitleUrl ? ' active' : ''}`;
-    offBtn.dataset.value = '';
-    offBtn.textContent = 'Off';
-    offBtn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      currentSubtitleUrl = '';
-      if (subtitleLabel) subtitleLabel.textContent = 'Off';
-      updateMenuSelection(subtitleMenu, '');
-      activateSubtitleTrack('');
-      closeAllDropdowns();
-      resetControlsTimer();
-    });
-    subtitleMenu.appendChild(offBtn);
+  if (subtitleSelect) {
+    subtitleSelect.replaceChildren();
+    subtitleSelect.add(new Option('Off', ''));
 
     subKeys.forEach(subLang => {
-      const url = subtitles[subLang];
-      const optBtn = document.createElement('button');
-      optBtn.type = 'button';
-      optBtn.className = `custom-dropdown-option${subLang === selectedSubKey ? ' active' : ''}`;
-      optBtn.dataset.value = url;
-      optBtn.textContent = subLang.toUpperCase();
-
-      optBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        currentSubtitleUrl = url;
-        if (subtitleLabel) subtitleLabel.textContent = subLang.toUpperCase();
-        updateMenuSelection(subtitleMenu, url);
-        activateSubtitleTrack(url);
-        closeAllDropdowns();
-        resetControlsTimer();
-      });
-
-      subtitleMenu.appendChild(optBtn);
+      const opt = new Option(subLang.toUpperCase(), subtitles[subLang]);
+      if (subLang === selectedSubKey) opt.selected = true;
+      subtitleSelect.add(opt);
     });
+
+    subtitleSelect.onchange = () => {
+      activateSubtitleTrack(subtitleSelect.value);
+      resetControlsTimer();
+    };
   }
 
-  if (currentAudioUrl) {
-    video.src = currentAudioUrl;
+  if (initialAudioUrl) {
+    video.src = initialAudioUrl;
     video.play().catch(() => {});
   }
 
-  if (currentSubtitleUrl) {
-    activateSubtitleTrack(currentSubtitleUrl);
+  if (initialSubUrl) {
+    activateSubtitleTrack(initialSubUrl);
   }
 }
 
@@ -445,7 +355,6 @@ if (progressBar) {
 
 if (moreBtn && modal) {
   moreBtn.onclick = () => {
-    closeAllDropdowns();
     modal.hidden = !modal.hidden;
   };
 }
