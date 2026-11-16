@@ -8,31 +8,183 @@
   <link rel="icon" type="image/png" href="https://i.imgur.com/cCqp6Qt.png">
   <link rel="stylesheet" href="style.css">
   <style>
-    html,body{width:100%;height:100%;margin:0;background:#000;overflow:hidden}
-    .sparks-container{position:fixed;inset:0;width:100%;height:100vh;height:100dvh;overflow-y:auto;overflow-x:hidden;scroll-snap-type:y mandatory;overscroll-behavior-y:contain;background:#000}
-    .spark-card{position:relative;width:100%;height:100vh;height:100dvh;scroll-snap-align:start;scroll-snap-stop:always;display:flex;align-items:center;justify-content:center;overflow:hidden;background:#000}
-    .spark-card video{position:absolute;inset:0;width:100%;height:100%;object-fit:cover;background:#000}
-    .spark-info{position:absolute;z-index:2;left:clamp(16px,4vw,36px);bottom:max(28px,env(safe-area-inset-bottom));max-width:min(70%,620px);padding:14px 16px;border:1px solid rgba(255,255,255,.13);border-radius:16px;background:rgba(0,0,0,.42);backdrop-filter:blur(12px);color:#fff}
-    .spark-info h2{margin:0 0 5px;font-size:clamp(1.05rem,3vw,1.5rem)}.spark-info p{margin:0;color:rgba(255,255,255,.72)}
-    .spark-overlay{position:absolute;z-index:3;right:clamp(14px,4vw,34px);bottom:max(30px,env(safe-area-inset-bottom));display:flex;flex-direction:column;align-items:center;gap:12px}
-    .like-btn{width:48px;height:48px;border:1px solid rgba(255,255,255,.22);border-radius:50%;display:grid;place-items:center;background:rgba(0,0,0,.55);color:#fff;cursor:pointer;font-size:1.2rem;}
-    .like-btn svg{width:24px;height:24px;fill:currentColor}.like-btn.active{color:#ff4778;border-color:#ff4778}
-    .spark-nav-back{position:fixed;z-index:10;top:max(14px,env(safe-area-inset-top));left:16px}.spark-nav-back a{width:46px;height:46px;display:grid;place-items:center;border:1px solid rgba(255,255,255,.2);border-radius:14px;background:rgba(0,0,0,.58);backdrop-filter:blur(14px);color:#fff}.spark-nav-back svg{width:24px;height:24px;fill:currentColor}
-    .spark-state{position:fixed;inset:0;display:grid;place-items:center;padding:24px;color:#ddd;text-align:center;background:#080808}
-    @media(max-width:680px){.spark-card video{object-fit:contain}.spark-info{left:12px;bottom:calc(18px + env(safe-area-inset-bottom));max-width:calc(100% - 86px);padding:11px 12px}.spark-overlay{right:12px;bottom:calc(20px + env(safe-area-inset-bottom))}.spark-nav-back{left:12px}}
+    html, body { width: 100%; height: 100%; margin: 0; background: #000; overflow: hidden; }
+    .sparks-container { position: fixed; inset: 0; width: 100%; height: 100vh; height: 100dvh; overflow-y: auto; overflow-x: hidden; scroll-snap-type: y mandatory; overscroll-behavior-y: contain; background: #000; }
+    .sparks-container.drawer-open { overflow: hidden; }
+    .spark-card { position: relative; width: 100%; height: 100vh; height: 100dvh; scroll-snap-align: start; scroll-snap-stop: always; display: flex; align-items: center; justify-content: center; overflow: hidden; background: #000; }
+    .spark-card video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; background: #000; }
+    .spark-info { position: absolute; z-index: 2; left: clamp(16px, 4vw, 36px); bottom: max(28px, env(safe-area-inset-bottom)); max-width: min(70%, 620px); padding: 14px 16px; border: 1px solid rgba(255,255,255,.13); border-radius: 16px; background: rgba(0,0,0,.48); backdrop-filter: blur(14px); color: #fff; }
+    .spark-info h2 { margin: 0 0 5px; font-size: clamp(1.05rem, 3vw, 1.45rem); }
+    .spark-info p { margin: 0; color: rgba(255,255,255,.74); font-size: .92rem; }
+    .spark-overlay { position: absolute; z-index: 3; right: clamp(14px, 4vw, 34px); bottom: max(30px, env(safe-area-inset-bottom)); display: flex; flex-direction: column; align-items: center; gap: 12px; }
+    .spark-action-group { display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .spark-action-count { font-size: .75rem; font-weight: 700; color: rgba(255,255,255,.88); text-shadow: 0 1px 4px rgba(0,0,0,.9); }
+    .like-btn { width: 48px; height: 48px; border: 1px solid rgba(255,255,255,.22); border-radius: 50%; display: grid; place-items: center; background: rgba(0,0,0,.55); backdrop-filter: blur(10px); color: #fff; cursor: pointer; font-size: 1.2rem; transition: transform .18s, border-color .18s, color .18s; }
+    .like-btn:hover { transform: scale(1.06); border-color: var(--accent-color, #d4af37); }
+    .like-btn svg { width: 23px; height: 23px; fill: currentColor; stroke: none; }
+    .like-btn.stroke-icon svg { fill: none; stroke: currentColor; stroke-width: 2; }
+    .like-btn.active { color: #ff4778; border-color: #ff4778; }
+    .spark-nav-back { position: fixed; z-index: 10; top: max(14px, env(safe-area-inset-top)); left: 16px; }
+    .spark-nav-back a { width: 46px; height: 46px; display: grid; place-items: center; border: 1px solid rgba(255,255,255,.2); border-radius: 14px; background: rgba(0,0,0,.58); backdrop-filter: blur(14px); color: #fff; transition: border-color .2s, color .2s; }
+    .spark-nav-back a:hover { border-color: var(--accent-color, #d4af37); color: var(--accent-color, #d4af37); }
+    .spark-nav-back svg { width: 24px; height: 24px; fill: currentColor; stroke: none; }
+    .spark-state { position: fixed; inset: 0; display: grid; place-items: center; padding: 24px; color: #ddd; text-align: center; background: #080808; }
+
+    /* Cajón de Comentarios Liquid Glass */
+    .comments-backdrop { position: fixed; inset: 0; z-index: 30; background: rgba(0,0,0,.58); backdrop-filter: blur(5px); opacity: 0; visibility: hidden; transition: opacity .22s ease, visibility .22s ease; }
+    .comments-backdrop.is-open { opacity: 1; visibility: visible; }
+    .comments-drawer { position: fixed; left: 50%; bottom: 0; z-index: 31; width: min(560px, 100vw); height: min(74dvh, 620px); display: flex; flex-direction: column; background: rgba(18, 18, 22, 0.88); backdrop-filter: blur(28px) saturate(165%); -webkit-backdrop-filter: blur(28px) saturate(165%); border: 1px solid rgba(255,255,255,.15); border-bottom: 0; border-radius: 24px 24px 0 0; box-shadow: 0 -20px 70px rgba(0,0,0,.75); transform: translate(-50%, 102%); transition: transform .28s cubic-bezier(0.16, 1, 0.3, 1); }
+    .comments-backdrop.is-open .comments-drawer { transform: translate(-50%, 0); }
+    .comments-head { display: flex; align-items: center; justify-content: space-between; padding: 16px 20px; border-bottom: 1px solid rgba(255,255,255,.1); }
+    .comments-head h3 { margin: 0; font-size: 1rem; font-weight: 750; color: #f7f5ef; }
+    .comments-close { width: 34px; height: 34px; border-radius: 50%; border: 1px solid rgba(255,255,255,.14); background: rgba(255,255,255,.06); color: #fff; cursor: pointer; display: grid; place-items: center; font-size: 1.15rem; }
+    .comments-list { flex: 1; overflow-y: auto; padding: 14px 20px; display: flex; flex-direction: column; gap: 12px; touch-action: pan-y; }
+    .comment-row { display: flex; align-items: flex-start; gap: 11px; padding: 10px 12px; border-radius: 14px; background: rgba(255,255,255,.04); border: 1px solid rgba(255,255,255,.07); }
+    .comment-row img { width: 34px; height: 34px; border-radius: 50%; object-fit: cover; flex: none; border: 1px solid rgba(255,255,255,.14); }
+    .comment-body { flex: 1; min-width: 0; }
+    .comment-meta { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 3px; }
+    .comment-author { font-size: .84rem; font-weight: 700; color: var(--accent-color, #d4af37); }
+    .comment-text { margin: 0; font-size: .92rem; line-height: 1.45; color: #f1eee7; word-wrap: break-word; }
+    .comment-del-btn { background: none; border: 0; color: #ff6b7a; font-size: .75rem; font-weight: 600; cursor: pointer; padding: 2px 6px; }
+    .comments-empty { text-align: center; color: #9a968e; font-size: .9rem; margin: auto 0; padding: 24px 0; }
+    .comments-form { display: flex; align-items: center; gap: 10px; padding: 12px 16px calc(14px + env(safe-area-inset-bottom)); border-top: 1px solid rgba(255,255,255,.1); background: rgba(10,10,12,.75); }
+    .comments-input { flex: 1; min-height: 44px; padding: 0 14px; border-radius: 999px; border: 1px solid rgba(255,255,255,.15); background: rgba(255,255,255,.07); color: #fff; font-size: .92rem; }
+    .comments-input:focus { border-color: var(--accent-color, #d4af37); outline: none; }
+    .comments-send { min-height: 44px; padding: 0 18px; border-radius: 999px; border: 0; background: var(--accent-color, #d4af37); color: #161208; font-weight: 750; font-size: .88rem; cursor: pointer; }
+    .comments-send:disabled { opacity: .45; cursor: not-allowed; }
+
+    @media (max-width: 680px) {
+      .spark-card video { object-fit: contain; }
+      .spark-info { left: 12px; bottom: calc(18px + env(safe-area-inset-bottom)); max-width: calc(100% - 86px); padding: 11px 12px; }
+      .spark-overlay { right: 12px; bottom: calc(20px + env(safe-area-inset-bottom)); }
+      .spark-nav-back { left: 12px; }
+    }
   </style>
 </head>
 <body>
-  <nav class="spark-nav-back" aria-label="Volver"><a href="home.html" aria-label="Volver al inicio"><svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20z"/></svg></a></nav>
+  <nav class="spark-nav-back" aria-label="Volver">
+    <a href="home.html" aria-label="Volver al inicio">
+      <svg viewBox="0 0 24 24"><path d="M20 11H7.83l5.59-5.59L12 4l-8 8 8 8 1.41-1.41L7.83 13H20z"/></svg>
+    </a>
+  </nav>
+
   <main id="sparksContainer" class="sparks-container" aria-label="Lumera Sparks"></main>
-  
+
+  <!-- Cajón de comentarios -->
+  <div class="comments-backdrop" id="commentsBackdrop" aria-hidden="true">
+    <section class="comments-drawer" role="dialog" aria-modal="true" aria-labelledby="commentsTitle">
+      <div class="comments-head">
+        <h3 id="commentsTitle">Comentarios</h3>
+        <button type="button" class="comments-close" id="commentsCloseBtn" aria-label="Cerrar comentarios">×</button>
+      </div>
+      <div class="comments-list" id="commentsList"></div>
+      <form class="comments-form" id="commentsForm">
+        <input type="text" id="commentInput" class="comments-input" maxlength="280" placeholder="Añade un comentario…" autocomplete="off">
+        <button type="submit" id="commentSendBtn" class="comments-send">Enviar</button>
+      </form>
+    </section>
+  </div>
+
   <script type="module">
-    import { db } from './firebase.js';
-    import { collection, getDocs } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
+    import { db, auth } from './firebase.js';
+    import {
+      collection,
+      getDocs,
+      addDoc,
+      deleteDoc,
+      doc,
+      query,
+      where,
+      serverTimestamp
+    } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
+    import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
 
     const container = document.getElementById('sparksContainer');
+    const backdrop = document.getElementById('commentsBackdrop');
+    const commentsTitle = document.getElementById('commentsTitle');
+    const commentsList = document.getElementById('commentsList');
+    const commentsForm = document.getElementById('commentsForm');
+    const commentInput = document.getElementById('commentInput');
+    const commentSendBtn = document.getElementById('commentSendBtn');
+    const commentsCloseBtn = document.getElementById('commentsCloseBtn');
+
     const language = localStorage.getItem('lumera_lang') || 'es';
+    const DEFAULT_AVATAR = 'https://i.imgur.com/cCqp6Qt.png';
+
+    const savedAccent = localStorage.getItem('lumera_accent_color');
+    if (savedAccent && /^#[\da-f]{6}$/i.test(savedAccent)) {
+      document.documentElement.style.setProperty('--accent-color', savedAccent);
+      document.documentElement.style.setProperty('--accent-glow', `${savedAccent}55`);
+    }
+
+    const UI = {
+      es: {
+        comments: 'Comentarios',
+        placeholder: 'Añade un comentario…',
+        loginPlaceholder: 'Inicia sesión para comentar…',
+        send: 'Enviar',
+        emptyComments: 'Sé el primero en comentar este Spark.',
+        delete: 'Eliminar',
+        emptySparks: 'Todavía no hay Sparks publicados.'
+      },
+      en: {
+        comments: 'Comments',
+        placeholder: 'Add a comment…',
+        loginPlaceholder: 'Sign in to comment…',
+        send: 'Send',
+        emptyComments: 'Be the first to comment on this Spark.',
+        delete: 'Delete',
+        emptySparks: 'No Sparks published yet.'
+      },
+      pt: {
+        comments: 'Comentários',
+        placeholder: 'Adicione um comentário…',
+        loginPlaceholder: 'Faça login para comentar…',
+        send: 'Enviar',
+        emptyComments: 'Seja o primeiro a comentar neste Spark.',
+        delete: 'Excluir',
+        emptySparks: 'Ainda não há Sparks publicados.'
+      },
+      fr: {
+        comments: 'Commentaires',
+        placeholder: 'Ajouter un commentaire…',
+        loginPlaceholder: 'Connectez-vous pour commenter…',
+        send: 'Envoyer',
+        emptyComments: 'Soyez le premier à commenter ce Spark.',
+        delete: 'Supprimer',
+        emptySparks: 'Aucun Spark publié pour le moment.'
+      }
+    }[language] || {
+      comments: 'Comentarios',
+      placeholder: 'Añade un comentario…',
+      loginPlaceholder: 'Inicia sesión para comentar…',
+      send: 'Enviar',
+      emptyComments: 'Sé el primero en comentar este Spark.',
+      delete: 'Eliminar',
+      emptySparks: 'Todavía no hay Sparks publicados.'
+    };
+
     let observer;
+    let currentUser = null;
+    let activeSparkId = null;
+    const commentCountBadges = new Map();
+
+    onAuthStateChanged(auth, (user) => {
+      currentUser = user;
+      if (!user) {
+        commentInput.disabled = true;
+        commentSendBtn.disabled = true;
+        commentInput.placeholder = UI.loginPlaceholder;
+      } else {
+        commentInput.disabled = false;
+        commentSendBtn.disabled = false;
+        commentInput.placeholder = UI.placeholder;
+      }
+    });
+
+    function escapeHtml(str) {
+      return String(str).replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    }
 
     function stopAllExcept(activeVideo) {
       container.querySelectorAll('video').forEach((video) => {
@@ -49,14 +201,108 @@
       video.play().catch(() => {});
     }
 
-    function createSpark(spark) {
+    async function openComments(sparkId, sparkName = '') {
+      activeSparkId = sparkId;
+      commentsTitle.textContent = sparkName ? `${UI.comments} · @${sparkName}` : UI.comments;
+      commentSendBtn.textContent = UI.send;
+      backdrop.classList.add('is-open');
+      backdrop.setAttribute('aria-hidden', 'false');
+      container.classList.add('drawer-open');
+      await renderCommentsForSpark(sparkId);
+    }
+
+    function closeComments() {
+      backdrop.classList.remove('is-open');
+      backdrop.setAttribute('aria-hidden', 'true');
+      container.classList.remove('drawer-open');
+      activeSparkId = null;
+    }
+
+    commentsCloseBtn.addEventListener('click', closeComments);
+    backdrop.addEventListener('click', (e) => { if (e.target === backdrop) closeComments(); });
+    document.addEventListener('keydown', (e) => { if (e.key === 'Escape' && activeSparkId) closeComments(); });
+
+    async function renderCommentsForSpark(sparkId) {
+      commentsList.innerHTML = `<p class="comments-empty">…</p>`;
+      try {
+        const q = query(collection(db, 'spark_comments'), where('sparkId', '==', sparkId));
+        const snap = await getDocs(q);
+        const items = snap.docs.map((d) => ({ id: d.id, ...d.data() }));
+        items.sort((a, b) => Number(b.createdAt?.seconds || 0) - Number(a.createdAt?.seconds || 0));
+
+        const badge = commentCountBadges.get(sparkId);
+        if (badge) badge.textContent = String(items.length);
+
+        commentsList.replaceChildren();
+        if (!items.length) {
+          commentsList.innerHTML = `<p class="comments-empty">${escapeHtml(UI.emptyComments)}</p>`;
+          return;
+        }
+
+        items.forEach((c) => {
+          const row = document.createElement('div');
+          row.className = 'comment-row';
+          const isMine = currentUser && c.userId === currentUser.uid;
+          row.innerHTML = `
+            <img src="${escapeHtml(c.avatar || DEFAULT_AVATAR)}" alt="">
+            <div class="comment-body">
+              <div class="comment-meta">
+                <span class="comment-author">${escapeHtml(c.authorName || 'Usuario')}</span>
+                ${isMine ? `<button type="button" class="comment-del-btn" data-id="${escapeHtml(c.id)}">${escapeHtml(UI.delete)}</button>` : ''}
+              </div>
+              <p class="comment-text">${escapeHtml(c.text || '')}</p>
+            </div>
+          `;
+
+          const delBtn = row.querySelector('.comment-del-btn');
+          if (delBtn) {
+            delBtn.addEventListener('click', async () => {
+              await deleteDoc(doc(db, 'spark_comments', c.id));
+              await renderCommentsForSpark(sparkId);
+            });
+          }
+          commentsList.appendChild(row);
+        });
+      } catch (err) {
+        console.error('Error cargando comentarios de Spark:', err);
+        commentsList.innerHTML = `<p class="comments-empty">${escapeHtml(UI.emptyComments)}</p>`;
+      }
+    }
+
+    commentsForm.addEventListener('submit', async (e) => {
+      e.preventDefault();
+      if (!currentUser || !activeSparkId) return;
+      const text = commentInput.value.trim();
+      if (!text) return;
+
+      const activeProfile = JSON.parse(localStorage.getItem('lumera_active_profile') || 'null');
+      commentSendBtn.disabled = true;
+      try {
+        await addDoc(collection(db, 'spark_comments'), {
+          sparkId: activeSparkId,
+          userId: currentUser.uid,
+          authorName: activeProfile?.name || currentUser.displayName || currentUser.email?.split('@')[0] || 'Usuario',
+          avatar: activeProfile?.avatar || DEFAULT_AVATAR,
+          text,
+          createdAt: serverTimestamp()
+        });
+        commentInput.value = '';
+        await renderCommentsForSpark(activeSparkId);
+      } catch (err) {
+        console.error('Error enviando comentario:', err);
+      } finally {
+        commentSendBtn.disabled = false;
+      }
+    });
+
+    function createSpark(spark, initialCommentCount = 0) {
       const card = document.createElement('section');
       card.className = 'spark-card';
 
       const video = document.createElement('video');
       video.src = spark.videoUrl || spark.url || spark.video || '';
       video.loop = true;
-      video.muted = true; // Empieza muteado para que el navegador deje hacer autoplay
+      video.muted = true;
       video.playsInline = true;
       video.preload = 'metadata';
       video.setAttribute('aria-label', spark.name || 'Lumera Spark');
@@ -72,7 +318,7 @@
       const overlay = document.createElement('div');
       overlay.className = 'spark-overlay';
 
-      // Botón para Activar/Desactivar sonido flotante
+      // Botón de Sonido
       const muteBtn = document.createElement('button');
       muteBtn.type = 'button';
       muteBtn.className = 'like-btn';
@@ -84,7 +330,6 @@
         muteBtn.innerHTML = video.muted ? '🔇' : '🔊';
       });
 
-      // Tocar el video pausa o reproduce (y prende sonido si estaba apagado)
       video.addEventListener('click', () => {
         if (video.muted) {
           video.muted = false;
@@ -98,6 +343,7 @@
         }
       });
 
+      // Botón de Like
       const like = document.createElement('button');
       like.type = 'button';
       like.className = 'like-btn';
@@ -114,26 +360,58 @@
         } catch {}
       });
 
-      overlay.append(muteBtn, like);
+      // Botón de Comentarios + Contador
+      const commentGroup = document.createElement('div');
+      commentGroup.className = 'spark-action-group';
+      const commentBtn = document.createElement('button');
+      commentBtn.type = 'button';
+      commentBtn.className = 'like-btn stroke-icon';
+      commentBtn.setAttribute('aria-label', UI.comments);
+      commentBtn.innerHTML = '<svg viewBox="0 0 24 24" aria-hidden="true"><path d="M21 11.5a8.38 8.38 0 0 1-.9 3.8 8.5 8.5 0 0 1-7.6 4.7 8.38 8.38 0 0 1-3.8-.9L3 21l1.9-5.7a8.38 8.38 0 0 1-.9-3.8 8.5 8.5 0 0 1 4.7-7.6 8.38 8.38 0 0 1 3.8-.9h.5a8.48 8.48 0 0 1 8 8v.5z"/></svg>';
+      commentBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        openComments(spark.id, spark.name || 'Lumera');
+      });
+
+      const countSpan = document.createElement('span');
+      countSpan.className = 'spark-action-count';
+      countSpan.textContent = String(initialCommentCount);
+      commentCountBadges.set(spark.id, countSpan);
+      commentGroup.append(commentBtn, countSpan);
+
+      overlay.append(muteBtn, like, commentGroup);
       card.append(video, info, overlay);
       return card;
     }
 
     async function loadSparks() {
       try {
-        const snapshot = await getDocs(collection(db, 'sparks'));
+        const [snapshot, commentsSnap] = await Promise.all([
+          getDocs(collection(db, 'sparks')),
+          getDocs(collection(db, 'spark_comments')).catch(() => ({ docs: [] }))
+        ]);
+
+        const countsBySpark = new Map();
+        commentsSnap.docs.forEach((d) => {
+          const sId = d.data()?.sparkId;
+          if (sId) countsBySpark.set(sId, (countsBySpark.get(sId) || 0) + 1);
+        });
+
         const likes = JSON.parse(localStorage.getItem('lumera_spark_likes') || '{}');
-        const sparks = snapshot.docs.map((entry) => ({ id:entry.id, ...entry.data() }))
-          .sort((a,b) => (likes[b.category] || 0) - (likes[a.category] || 0));
+        const sparks = snapshot.docs
+          .map((entry) => ({ id: entry.id, ...entry.data() }))
+          .sort((a, b) => (likes[b.category] || 0) - (likes[a.category] || 0));
 
         if (!sparks.length) {
-          const empty = document.createElement('p'); empty.className = 'spark-state';
-          empty.textContent = language === 'en' ? 'No Sparks published yet.' : language === 'pt' ? 'Ainda não há Sparks publicados.' : language === 'fr' ? 'Aucun Spark publié pour le moment.' : 'Todavía no hay Sparks publicados.';
-          document.body.appendChild(empty); return;
+          const empty = document.createElement('p');
+          empty.className = 'spark-state';
+          empty.textContent = UI.emptySparks;
+          document.body.appendChild(empty);
+          return;
         }
 
         const fragment = document.createDocumentFragment();
-        sparks.forEach((spark) => fragment.appendChild(createSpark(spark)));
+        sparks.forEach((spark) => fragment.appendChild(createSpark(spark, countsBySpark.get(spark.id) || 0)));
         container.replaceChildren(fragment);
 
         observer = new IntersectionObserver((entries) => {
@@ -141,19 +419,25 @@
             if (entry.isIntersecting && entry.intersectionRatio >= 0.65) activateCard(entry.target);
             else entry.target.querySelector('video')?.pause();
           });
-        }, { root:container, threshold:[0,0.65,1] });
+        }, { root: container, threshold: [0, 0.65, 1] });
 
         container.querySelectorAll('.spark-card').forEach((card) => observer.observe(card));
 
         document.addEventListener('visibilitychange', () => {
           if (document.hidden) stopAllExcept(null);
-          else { const active = [...container.querySelectorAll('.spark-card')].find((card) => { const rect = card.getBoundingClientRect(); return rect.top >= -10 && rect.top < innerHeight * 0.5; }); if (active) activateCard(active); }
+          else {
+            const active = [...container.querySelectorAll('.spark-card')].find((card) => {
+              const rect = card.getBoundingClientRect();
+              return rect.top >= -10 && rect.top < innerHeight * 0.5;
+            });
+            if (active) activateCard(active);
+          }
         });
       } catch (error) {
         console.error('Could not load Sparks:', error);
       }
     }
-    
+
     loadSparks();
   </script>
 </body>
