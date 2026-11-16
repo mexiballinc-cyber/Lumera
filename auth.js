@@ -6,6 +6,11 @@ const ADMIN_EMAIL = 'jgonzalezgutierrez1@bcedu.mx';
 const DEFAULT_AVATAR = 'https://i.imgur.com/cCqp6Qt.png';
 let currentUser = null;
 let selectedAvatarUrl = DEFAULT_AVATAR;
+let editingProfileIndex = -1;
+let editingProfilesList = [];
+let editingAvatarUrl = DEFAULT_AVATAR;
+let pendingDeleteIndex = -1;
+let pendingDeleteProfilesList = [];
 let isRegisterMode = false;
 let isSubmitting = false;
 let isEditingProfiles = false;
@@ -23,6 +28,28 @@ const authMessage = $('authMessage');
 const profilesSection = $('profilesSection');
 const profilesGrid = $('profilesGrid');
 const headerAdminBtn = $('headerAdminBtn');
+
+function syncAuthSettingsUI() {
+  const currentLang = localStorage.getItem('lumera_lang') || 'es';
+  const currentColor = (localStorage.getItem('lumera_accent_color') || '#d4af37').toLowerCase();
+  document.documentElement.style.setProperty('--accent-color', currentColor);
+  document.documentElement.style.setProperty('--accent-glow', `${currentColor}55`);
+
+  document.querySelectorAll('#authLangGrid .lang-chip').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.lang === currentLang);
+  });
+  document.querySelectorAll('#authColorSwatches .color-swatch').forEach((btn) => {
+    btn.classList.toggle('active', btn.dataset.color.toLowerCase() === currentColor);
+  });
+}
+
+function showInlineError(elId, msg = '') {
+  const el = $(elId);
+  if (!el) return;
+  el.textContent = msg;
+  el.hidden = !msg;
+  el.style.display = msg ? 'block' : 'none';
+}
 
 function showAuthMessage(message = '') {
   authMessage.textContent = message;
@@ -165,20 +192,19 @@ function renderProfiles(profiles) {
       edit.type = 'button';
       edit.className = 'btn-profile-action';
       edit.textContent = 'Editar';
-      edit.addEventListener('click', (event) => { event.stopPropagation(); editProfile(index, profiles); });
+      edit.addEventListener('click', (event) => { event.stopPropagation(); openEditProfileModal(index, profiles); });
       
       const remove = document.createElement('button');
       remove.type = 'button';
       remove.className = 'btn-profile-action delete-btn';
       remove.textContent = 'Eliminar';
-      remove.addEventListener('click', (event) => { event.stopPropagation(); deleteProfile(index, profiles); });
+      remove.addEventListener('click', (event) => { event.stopPropagation(); openDeleteProfileModal(index, profiles); });
       
       actions.append(edit, remove);
       card.appendChild(actions);
     } else {
       card.addEventListener('click', () => {
         localStorage.setItem('lumera_active_profile', JSON.stringify(profile));
-        // Redirige directamente a la sección Kids si el perfil es de tipo Kids
         if (profile.isKids) {
           localStorage.setItem('lumera_active_filter', 'kids');
         } else {
@@ -199,56 +225,138 @@ function renderProfiles(profiles) {
 
 window.toggleEditProfiles = async () => { isEditingProfiles = !isEditingProfiles; await loadUserProfiles(); };
 
-async function editProfile(index, profiles) {
-  const name = prompt('Nuevo nombre para el perfil:', profiles[index]?.name || '');
-  if (name === null) return;
-  if (!name.trim()) return alert('El nombre del perfil no puede estar vacío.');
-  profiles[index] = { ...profiles[index], name: name.trim() };
-  await persistProfiles(profiles);
+async function populateAvatarGrid(containerEl, currentUrl, onSelect) {
+  containerEl.textContent = 'Cargando avatares…';
+  try {
+    const snapshot = await getDocs(collection(db, 'avatars'));
+    containerEl.replaceChildren();
+
+    const defaultImg = document.createElement('img');
+    defaultImg.src = DEFAULT_AVATAR;
+    defaultImg.alt = 'Avatar Lumera';
+    defaultImg.className = `avatar-option${currentUrl === DEFAULT_AVATAR ? ' selected' : ''}`;
+    defaultImg.addEventListener('click', () => {
+      containerEl.querySelectorAll('.avatar-option').forEach((item) => item.classList.remove('selected'));
+      defaultImg.classList.add('selected');
+      onSelect(DEFAULT_AVATAR);
+    });
+    containerEl.appendChild(defaultImg);
+
+    snapshot.forEach((entry) => {
+      const data = entry.data();
+      if (!data.url || data.url === DEFAULT_AVATAR) return;
+      const img = document.createElement('img');
+      img.src = data.url;
+      img.alt = 'Avatar disponible';
+      img.className = `avatar-option${currentUrl === data.url ? ' selected' : ''}`;
+      img.addEventListener('click', () => {
+        containerEl.querySelectorAll('.avatar-option').forEach((item) => item.classList.remove('selected'));
+        img.classList.add('selected');
+        onSelect(data.url);
+      });
+      containerEl.appendChild(img);
+    });
+  } catch (error) {
+    containerEl.textContent = 'Usando avatar predeterminado.';
+  }
 }
 
-async function deleteProfile(index, profiles) {
-  if (profiles.length <= 1) return alert('Debe quedar al menos un perfil.');
-  if (!confirm(`¿Eliminar el perfil “${profiles[index].name}”?`)) return;
-  profiles.splice(index, 1);
-  await persistProfiles(profiles);
+/* MODAL EDITAR PERFIL (NOMBRE + FOTO/AVATAR + KIDS) */
+async function openEditProfileModal(index, profiles) {
+  editingProfileIndex = index;
+  editingProfilesList = [...profiles];
+  const target = profiles[index];
+  if (!target) return;
+
+  editingAvatarUrl = target.avatar || DEFAULT_AVATAR;
+  $('editProfName').value = target.name || '';
+  $('editProfKids').checked = Boolean(target.isKids);
+  showInlineError('editProfError', '');
+  $('editProfileModal').style.display = 'flex';
+
+  await populateAvatarGrid($('editAvatarPickerContainer'), editingAvatarUrl, (url) => {
+    editingAvatarUrl = url;
+  });
 }
 
-async function persistProfiles(profiles) {
+window.closeEditProfileModal = () => {
+  $('editProfileModal').style.display = 'none';
+  editingProfileIndex = -1;
+};
+
+window.saveEditedProfile = async () => {
+  if (editingProfileIndex < 0) return;
+  const name = $('editProfName').value.trim();
+  const isKids = $('editProfKids').checked;
+  if (!name) {
+    showInlineError('editProfError', 'El nombre del perfil no puede estar vacío.');
+    return;
+  }
+
+  editingProfilesList[editingProfileIndex] = {
+    ...editingProfilesList[editingProfileIndex],
+    name,
+    isKids,
+    avatar: editingAvatarUrl || DEFAULT_AVATAR
+  };
+
+  const ok = await persistProfiles(editingProfilesList, 'editProfError');
+  if (ok) closeEditProfileModal();
+};
+
+/* MODAL ELIMINAR PERFIL (SIN CONFIRM/ALERT NATIVO) */
+function openDeleteProfileModal(index, profiles) {
+  const confirmBtn = $('confirmDeleteProfileBtn');
+  if (profiles.length <= 1) {
+    $('deleteModalTag').textContent = 'AVISO';
+    $('deleteModalTitle').textContent = 'No se puede eliminar';
+    $('deleteModalMessage').textContent = 'Debe quedar al menos un perfil activo en tu cuenta.';
+    if (confirmBtn) confirmBtn.style.display = 'none';
+    $('deleteProfileModal').style.display = 'flex';
+    return;
+  }
+
+  pendingDeleteIndex = index;
+  pendingDeleteProfilesList = [...profiles];
+  $('deleteModalTag').textContent = 'CONFIRMAR ACCIÓN';
+  $('deleteModalTitle').textContent = 'Eliminar perfil';
+  $('deleteModalMessage').textContent = `¿Estás seguro de eliminar el perfil “${profiles[index].name}”? Esta acción no se puede deshacer.`;
+  if (confirmBtn) {
+    confirmBtn.style.display = 'inline-flex';
+    confirmBtn.onclick = async () => {
+      if (pendingDeleteIndex < 0) return;
+      pendingDeleteProfilesList.splice(pendingDeleteIndex, 1);
+      const ok = await persistProfiles(pendingDeleteProfilesList);
+      if (ok) closeDeleteProfileModal();
+    };
+  }
+  $('deleteProfileModal').style.display = 'flex';
+}
+
+window.closeDeleteProfileModal = () => {
+  $('deleteProfileModal').style.display = 'none';
+  pendingDeleteIndex = -1;
+};
+
+async function persistProfiles(profiles, errorElId = '') {
   try {
     await updateDoc(doc(db, 'users', currentUser.uid), { profiles });
     renderProfiles(profiles);
+    return true;
   } catch (error) {
     console.error(error);
-    alert('No se pudo guardar el cambio.');
+    if (errorElId) showInlineError(errorElId, 'No se pudo guardar el cambio. Revisa tu conexión.');
+    return false;
   }
 }
 
 window.openAddProfileModal = async () => {
+  showInlineError('newProfError', '');
   $('addProfileModal').style.display = 'flex';
-  const container = $('avatarPickerContainer');
-  container.textContent = 'Cargando avatares…';
   selectedAvatarUrl = DEFAULT_AVATAR;
-  try {
-    const snapshot = await getDocs(collection(db, 'avatars'));
-    container.replaceChildren();
-    snapshot.forEach((entry) => {
-      const data = entry.data();
-      if (!data.url) return;
-      const img = document.createElement('img');
-      img.src = data.url;
-      img.alt = 'Avatar disponible';
-      img.className = 'avatar-option';
-      img.addEventListener('click', () => {
-        container.querySelectorAll('.avatar-option').forEach((item) => item.classList.remove('selected'));
-        img.classList.add('selected');
-        selectedAvatarUrl = data.url;
-      });
-      container.appendChild(img);
-    });
-  } catch (error) {
-    container.textContent = 'Usando avatar predeterminado.';
-  }
+  await populateAvatarGrid($('avatarPickerContainer'), selectedAvatarUrl, (url) => {
+    selectedAvatarUrl = url;
+  });
 };
 
 window.closeProfileModal = () => { $('addProfileModal').style.display = 'none'; };
@@ -256,8 +364,14 @@ window.closeProfileModal = () => { $('addProfileModal').style.display = 'none'; 
 window.saveNewProfile = async () => {
   const name = $('newProfName').value.trim();
   const isKids = $('newProfKids').checked;
-  if (!name) return alert('Por favor asigna un nombre al perfil.');
-  if (!currentUser) return alert('Inicia sesión para crear un perfil.');
+  if (!name) {
+    showInlineError('newProfError', 'Por favor asigna un nombre al perfil.');
+    return;
+  }
+  if (!currentUser) {
+    showInlineError('newProfError', 'Inicia sesión para crear un perfil.');
+    return;
+  }
 
   try {
     const ref = doc(db, 'users', currentUser.uid);
@@ -271,16 +385,24 @@ window.saveNewProfile = async () => {
     renderProfiles(profiles);
   } catch (error) {
     console.error(error);
-    alert('No se pudo guardar el perfil.');
+    showInlineError('newProfError', 'No se pudo guardar el perfil.');
   }
 };
 
 window.logoutUser = () => signOut(auth);
-window.openSettings = () => $('settingsModal').style.display = 'flex';
-window.closeSettingsModal = () => $('settingsModal').style.display = 'none';
-window.updateSecondaryColor = (hex) => {
-  document.documentElement.style.setProperty('--accent-color', hex);
-  localStorage.setItem('lumera_accent_color', hex);
+window.openSettings = () => {
+  syncAuthSettingsUI();
+  $('settingsModal').style.display = 'flex';
 };
-window.changeLanguage = (lang) => { localStorage.setItem('lumera_lang', lang); };
+window.closeSettingsModal = () => { $('settingsModal').style.display = 'none'; };
+window.updateSecondaryColor = (hex) => {
+  localStorage.setItem('lumera_accent_color', hex);
+  syncAuthSettingsUI();
+};
+window.changeLanguage = (lang) => {
+  localStorage.setItem('lumera_lang', lang);
+  syncAuthSettingsUI();
+};
+
+syncAuthSettingsUI();
 setAuthMode(false);
