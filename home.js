@@ -4,6 +4,7 @@ import { onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/13.2.0/fi
 import { applyTranslations, getLanguage, setLanguage, t } from './i18n.js';
 
 const ADMIN_EMAIL = 'jgonzalezgutierrez1@bcedu.mx';
+const INTERESTS_KEY = 'lumera_user_interests';
 const lang = () => getLanguage();
 const $ = (id) => document.getElementById(id);
 const profile = JSON.parse(localStorage.getItem('lumera_active_profile') || 'null');
@@ -14,6 +15,7 @@ let heroItems = [];
 let activeFilter = localStorage.getItem('lumera_active_filter') || 'all';
 let heroIndex = 0;
 let heroTimer;
+let searchRecordTimer;
 
 function setTheme(color) {
   const safe = /^#[\da-f]{6}$/i.test(color) ? color : '#d4af37';
@@ -42,6 +44,88 @@ function shortSynopsisOf(item) { return localized(item, 'shortSynopsis') || syno
 function titleOf(item) { return localized(item, 'title') || item.title || t('discoverLumera'); }
 function inKids(item) { return Number(item.ageRating ?? item.age ?? 99) <= 10; }
 function prettyType(item) { return item.type === 'series' ? t('series') : t('movie'); }
+function itemCategories(item) {
+  return (Array.isArray(item.categories) ? item.categories : item.category ? [item.category] : []).filter(Boolean);
+}
+
+/* ALGORITMO PRIVADO DE INTERESES EN LOCALSTORAGE */
+function getUserInterests() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(INTERESTS_KEY) || '{}');
+    return {
+      categories: parsed.categories && typeof parsed.categories === 'object' ? parsed.categories : {},
+      terms: parsed.terms && typeof parsed.terms === 'object' ? parsed.terms : {}
+    };
+  } catch {
+    return { categories: {}, terms: {} };
+  }
+}
+
+export function recordUserInterest(categories = [], searchTerm = '') {
+  try {
+    const data = getUserInterests();
+
+    (Array.isArray(categories) ? categories : [categories]).forEach((cat) => {
+      const cleanCat = String(cat || '').trim();
+      if (!cleanCat) return;
+      data.categories[cleanCat] = (data.categories[cleanCat] || 0) + 1;
+    });
+
+    const cleanTerm = String(searchTerm || '').trim().toLowerCase();
+    if (cleanTerm.length >= 2) {
+      data.terms[cleanTerm] = (data.terms[cleanTerm] || 0) + 1;
+      const entries = Object.entries(data.terms).sort((a, b) => b[1] - a[1]).slice(0, 30);
+      data.terms = Object.fromEntries(entries);
+    }
+
+    data.updatedAt = Date.now();
+    localStorage.setItem(INTERESTS_KEY, JSON.stringify(data));
+  } catch {}
+}
+
+function renderRecommendations() {
+  const section = $('recommendedSection');
+  const row = $('recommendedRow');
+  const countEl = $('recommendedCount');
+  if (!section || !row) return;
+
+  const visible = mediaItems.filter((item) => !profile?.isKids || inKids(item));
+  if (!visible.length) {
+    section.hidden = true;
+    return;
+  }
+
+  const interests = getUserInterests();
+  const catWeights = interests.categories || {};
+  const termWeights = interests.terms || {};
+
+  const scored = visible.map((item) => {
+    let score = 0;
+
+    itemCategories(item).forEach((cat) => {
+      if (catWeights[cat]) score += catWeights[cat] * 3;
+    });
+
+    const searchableText = `${titleOf(item)} ${synopsisOf(item)}`.toLowerCase();
+    Object.entries(termWeights).forEach(([term, weight]) => {
+      if (term && searchableText.includes(term)) {
+        score += weight * 2;
+      }
+    });
+
+    const ratingVal = Number(item.avgRating || 5.0);
+    score += ratingVal * 0.25;
+
+    return { item, score };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+  const recommended = scored.slice(0, 12).map((entry) => entry.item);
+
+  section.hidden = !recommended.length;
+  if (countEl) countEl.textContent = recommended.length ? String(recommended.length) : '';
+  if (recommended.length) renderRow(row, recommended, true);
+}
 
 function filteredItems() {
   return mediaItems.filter((item) => {
@@ -57,9 +141,14 @@ function makeCard(item, compact = false) {
   const isKidsContent = inKids(item);
   card.className = `media-card${compact ? ' compact-card' : ''}${profile?.isKids ? ' kids-border-active' : ''}`;
   card.href = item.targetUrl || `details.html?id=${encodeURIComponent(item.id)}`;
+
+  card.addEventListener('click', () => {
+    recordUserInterest(itemCategories(item));
+  });
   
   const poster = posterOf(item);
   const title = titleOf(item);
+  const ratingText = item.avgRating || '5.0';
   const kidsBadgeHtml = isKidsContent 
     ? `<img src="https://i.imgur.com/e0MQHrD.png" class="kids-corner-badge" alt="Kids Badge">` 
     : '';
@@ -72,7 +161,10 @@ function makeCard(item, compact = false) {
     </div>
     <div class="media-card-copy">
       <h3>${escapeAttr(title)}</h3>
-      <span>${escapeAttr(String(item.year || ''))}</span>
+      <div class="media-card-meta">
+        <span>${escapeAttr(String(item.year || ''))}</span>
+        <span class="media-card-rating">⭐ ${escapeAttr(ratingText)}</span>
+      </div>
     </div>
   `;
   return card;
@@ -97,6 +189,7 @@ function renderCatalog() {
 
   if (activeFilter === 'all') {
     renderContinueAndNew();
+    renderRecommendations();
     if ($('mainSection')) $('mainSection').hidden = true;
 
     if (dynamicContainer) {
@@ -104,7 +197,7 @@ function renderCatalog() {
 
       const categoriesMap = new Map();
       items.forEach(item => {
-        const cats = Array.isArray(item.categories) ? item.categories : (item.category ? [item.category] : []);
+        const cats = itemCategories(item);
         cats.forEach(cat => {
           if (!categoriesMap.has(cat)) categoriesMap.set(cat, []);
           categoriesMap.get(cat).push(item);
@@ -162,6 +255,7 @@ function renderCatalog() {
     }
   } else {
     if ($('continueSection')) $('continueSection').hidden = true;
+    if ($('recommendedSection')) $('recommendedSection').hidden = true;
     if ($('newSection')) $('newSection').hidden = true;
     if (dynamicContainer) dynamicContainer.replaceChildren();
     if ($('mainSection')) $('mainSection').hidden = false;
@@ -226,6 +320,7 @@ function showHero(item, index = 0) {
   
   if ($('heroPlayBtn')) {
     $('heroPlayBtn').onclick = () => {
+      recordUserInterest(itemCategories(item));
       if (item.contentId) {
         location.href = `details.html?id=${encodeURIComponent(item.contentId)}`;
       } else if (item.customLink) {
@@ -251,7 +346,7 @@ function showHero(item, index = 0) {
 
 function populateFilters() {
   const currentLang = lang();
-  const categories = [...new Set(mediaItems.flatMap((item) => Array.isArray(item.categories) ? item.categories : item.category ? [item.category] : []))].sort((a, b) => String(a).localeCompare(String(b)));
+  const categories = [...new Set(mediaItems.flatMap((item) => itemCategories(item)))].sort((a, b) => String(a).localeCompare(String(b)));
   const years = [...new Set(mediaItems.map((item) => item.year).filter(Boolean))].sort((a, b) => Number(b) - Number(a));
   
   if ($('categoryFilter')) {
@@ -279,8 +374,15 @@ function updateSearch() {
   const category = $('categoryFilter')?.value || ''; 
   const year = $('yearFilter')?.value || ''; 
   const maxAge = Number($('ageFilter')?.value || 999);
+
+  clearTimeout(searchRecordTimer);
+  if (q.length >= 2 || category) {
+    searchRecordTimer = setTimeout(() => {
+      recordUserInterest(category ? [category] : [], q);
+    }, 600);
+  }
   
-  const matches = mediaItems.filter(item => (!profile?.isKids || inKids(item)) && (!q || String(titleOf(item)).toLocaleLowerCase().includes(q)) && (!category || (item.categories || [item.category]).filter(Boolean).includes(category)) && (!year || String(item.year) === year) && Number(item.ageRating ?? 0) <= maxAge);
+  const matches = mediaItems.filter(item => (!profile?.isKids || inKids(item)) && (!q || String(titleOf(item)).toLocaleLowerCase().includes(q)) && (!category || itemCategories(item).includes(category)) && (!year || String(item.year) === year) && Number(item.ageRating ?? 0) <= maxAge);
   if ($('searchResultCount')) $('searchResultCount').textContent = String(matches.length); 
   
   const results = $('searchResults'); 
@@ -293,13 +395,37 @@ function updateSearch() {
 async function loadCatalog() {
   if ($('catalogStatus')) $('catalogStatus').hidden = false;
   try {
-    const [contentSnap, heroSnap, categoriesSnap] = await Promise.all([
+    const [contentSnap, heroSnap, categoriesSnap, reviewsSnap] = await Promise.all([
       getDocs(collection(db, 'content')),
       getDocs(collection(db, 'hero_slides')),
-      getDocs(collection(db, 'categories'))
+      getDocs(collection(db, 'categories')),
+      getDocs(collection(db, 'reviews')).catch(() => ({ docs: [] }))
     ]);
+
+    // Calcular promedio matemático exacto (Suma / Total) por mediaId
+    const ratingsAccumulator = new Map();
+    reviewsSnap.docs.forEach((docSnap) => {
+      const r = docSnap.data();
+      const mId = r.mediaId;
+      const val = Number(r.rating);
+      if (!mId || isNaN(val) || val < 1 || val > 5) return;
+      const current = ratingsAccumulator.get(mId) || { sum: 0, count: 0 };
+      current.sum += val;
+      current.count += 1;
+      ratingsAccumulator.set(mId, current);
+    });
     
-    mediaItems = contentSnap.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
+    mediaItems = contentSnap.docs.map((entry) => {
+      const stats = ratingsAccumulator.get(entry.id);
+      const avgRating = stats && stats.count > 0 ? (stats.sum / stats.count).toFixed(1) : '5.0';
+      return {
+        id: entry.id,
+        ...entry.data(),
+        avgRating,
+        reviewCount: stats?.count || 0
+      };
+    });
+
     loadedCategories = categoriesSnap.docs.map((entry) => ({ id: entry.id, ...entry.data() }));
     
     heroItems = heroSnap.docs.map((entry) => {
@@ -343,8 +469,20 @@ document.querySelectorAll('[data-filter]').forEach((button) => button.addEventLi
 }));
 
 const searchDialog = $('searchDialog'), settingsDialog = $('settingsDialog');
-function openSearch() { if(searchDialog){ searchDialog.showModal(); updateSearch(); setTimeout(() => $('searchQuery')?.focus(), 50); } }
-function openSettings() { if(settingsDialog) settingsDialog.showModal(); }
+function openSearch() {
+  if (searchDialog) {
+    searchDialog.showModal();
+    document.body.classList.add('modal-open');
+    updateSearch();
+    setTimeout(() => $('searchQuery')?.focus(), 50);
+  }
+}
+function openSettings() {
+  if (settingsDialog) {
+    settingsDialog.showModal();
+    document.body.classList.add('modal-open');
+  }
+}
 
 if ($('searchOpen')) $('searchOpen').onclick = openSearch;
 if ($('mobileSearchOpen')) $('mobileSearchOpen').onclick = openSearch;
@@ -371,7 +509,11 @@ if ($('accentPicker')) {
 }
 
 [searchDialog, settingsDialog].forEach(dialog => {
-  if (dialog) dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+  if (!dialog) return;
+  dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
+  dialog.addEventListener('close', () => {
+    document.body.classList.remove('modal-open');
+  });
 });
 
 loadCatalog();
