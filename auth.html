@@ -57,6 +57,10 @@
                         <input type="password" id="authPassword" class="input-field" placeholder="••••••••" autocomplete="current-password" minlength="6" required>
                     </div>
 
+                    <div id="forgotPasswordRow" style="margin-top: 10px; text-align: right;">
+                        <button id="forgotPasswordBtn" type="button" class="auth-toggle-btn" style="font-size: 0.84rem; padding: 4px 2px;">¿Olvidaste tu contraseña?</button>
+                    </div>
+
                     <p id="authMessage" role="alert" aria-live="polite" hidden></p>
                     <button id="authSubmitBtn" class="hero-btn auth-submit" type="submit">Entrar</button>
 
@@ -77,6 +81,24 @@
             <div id="profilesGrid" class="profiles-grid"></div>
             <button class="ghost-button" type="button" onclick="logoutUser()">Cerrar sesión</button>
         </section>
+    </div>
+
+    <!-- MODAL RECUPERAR CONTRASEÑA (CONECTADO A FIREBASE) -->
+    <div id="resetPasswordModal" class="modal-overlay">
+        <div class="modal-box glass-panel">
+            <div class="modal-head">
+                <div><p class="feature-tag auth-tag">RECUPERAR ACCESO</p><h3>Restablecer contraseña</h3></div>
+                <button class="close-button" type="button" aria-label="Cerrar" onclick="closeResetPasswordModal()"><svg viewBox="0 0 24 24"><path d="m6 6 12 12M18 6 6 18" /></svg></button>
+            </div>
+            <p class="modal-confirm-copy" style="color: rgba(247,245,239,0.78); font-size: 0.92rem; line-height: 1.5; margin-top: 0;">Ingresa el correo de tu cuenta y te enviaremos un enlace para crear una nueva contraseña.</p>
+            <label class="field-label" for="resetEmailInput">Correo electrónico</label>
+            <input type="email" id="resetEmailInput" class="input-field" placeholder="correo@ejemplo.com" autocomplete="email">
+            <p id="resetPasswordFeedback" role="status" aria-live="polite" style="margin: 12px 0 0; font-size: 0.88rem; line-height: 1.45;" hidden></p>
+            <div class="modal-actions">
+                <button class="hero-btn" id="sendResetEmailBtn" type="button" onclick="submitPasswordReset()">Enviar enlace</button>
+                <button class="secondary-button" type="button" onclick="closeResetPasswordModal()">Cerrar</button>
+            </div>
+        </div>
     </div>
 
     <!-- MODAL CREAR PERFIL -->
