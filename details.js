@@ -22,7 +22,6 @@ const DEFAULT_AVATAR = 'https://i.imgur.com/cCqp6Qt.png';
 let currentUser = null;
 let selectedRating = 5;
 
-// Aplicar color de acento guardado
 const savedAccent = localStorage.getItem('lumera_accent_color');
 if (savedAccent && /^#[\da-f]{6}$/i.test(savedAccent)) {
   document.documentElement.style.setProperty('--accent-color', savedAccent);
@@ -132,19 +131,16 @@ onAuthStateChanged(auth, (user) => {
 });
 
 function updateReviewFormState() {
-  const commentEl = $('reviewComment');
-  const submitBtn = $('submitReviewBtn');
   const statusEl = $('reviewStatusMsg');
-  if (!commentEl || !submitBtn) return;
-
   if (!currentUser) {
-    commentEl.disabled = true;
-    submitBtn.disabled = true;
-    if (statusEl) statusEl.textContent = L.loginToReview;
+    if (statusEl && !statusEl.textContent) {
+      statusEl.style.color = 'var(--text-muted)';
+      statusEl.textContent = L.loginToReview;
+    }
   } else {
-    commentEl.disabled = false;
-    submitBtn.disabled = false;
-    if (statusEl && statusEl.textContent === L.loginToReview) statusEl.textContent = '';
+    if (statusEl && statusEl.textContent === L.loginToReview) {
+      statusEl.textContent = '';
+    }
   }
 }
 
@@ -161,7 +157,6 @@ function setupStarPicker() {
 
   buttons.forEach((btn) => {
     btn.addEventListener('click', () => {
-      if (!currentUser) return;
       selectedRating = Number(btn.dataset.value);
       paintStars(selectedRating);
     });
@@ -372,8 +367,10 @@ async function loadReviews() {
       return;
     }
 
+    const activeUid = auth.currentUser?.uid || currentUser?.uid || localStorage.getItem('lumera_session') || '';
+
     reviews.forEach((rev) => {
-      const isMine = currentUser && rev.userId === currentUser.uid;
+      const isMine = Boolean(activeUid && rev.userId === activeUid);
       if (isMine) {
         selectedRating = Number(rev.rating) || 5;
         $('starPicker')?.querySelectorAll('.star-btn').forEach((btn) => {
@@ -405,11 +402,21 @@ async function loadReviews() {
         delBtn.className = 'review-delete-btn';
         delBtn.textContent = L.deleteBtn;
         delBtn.addEventListener('click', async () => {
-          await deleteDoc(doc(db, 'reviews', rev.id));
-          if ($('reviewComment')) $('reviewComment').value = '';
-          if ($('submitReviewBtn')) $('submitReviewBtn').textContent = L.publishBtn;
-          if ($('reviewStatusMsg')) $('reviewStatusMsg').textContent = L.deletedReview;
-          await loadReviews();
+          try {
+            await deleteDoc(doc(db, 'reviews', rev.id));
+            if ($('reviewComment')) $('reviewComment').value = '';
+            if ($('submitReviewBtn')) $('submitReviewBtn').textContent = L.publishBtn;
+            if ($('reviewStatusMsg')) {
+              $('reviewStatusMsg').style.color = 'var(--accent-color)';
+              $('reviewStatusMsg').textContent = L.deletedReview;
+            }
+            await loadReviews();
+          } catch (err) {
+            if ($('reviewStatusMsg')) {
+              $('reviewStatusMsg').style.color = '#ff6b7a';
+              $('reviewStatusMsg').textContent = `No se pudo eliminar (${err.code || 'error'}).`;
+            }
+          }
         });
         card.appendChild(delBtn);
       }
@@ -423,30 +430,56 @@ async function loadReviews() {
 
 if ($('submitReviewBtn')) {
   $('submitReviewBtn').addEventListener('click', async () => {
-    if (!currentUser || !mediaId) return;
     const btn = $('submitReviewBtn');
     const statusEl = $('reviewStatusMsg');
+
+    if (auth.authStateReady) await auth.authStateReady();
+    const user = auth.currentUser || currentUser;
+
+    if (!user) {
+      if (statusEl) {
+        statusEl.style.color = '#ff6b7a';
+        statusEl.textContent = L.loginToReview;
+      }
+      return;
+    }
+    if (!mediaId) return;
+
     const comment = ($('reviewComment')?.value || '').trim();
     const activeProfile = JSON.parse(localStorage.getItem('lumera_active_profile') || 'null');
 
     btn.disabled = true;
+    if (statusEl) {
+      statusEl.style.color = 'var(--text-muted)';
+      statusEl.textContent = '…';
+    }
+
     try {
-      const reviewDocId = `${mediaId}_${currentUser.uid}`;
+      const reviewDocId = `${mediaId}_${user.uid}`;
       await setDoc(doc(db, 'reviews', reviewDocId), {
         mediaId,
-        userId: currentUser.uid,
-        authorName: activeProfile?.name || currentUser.displayName || currentUser.email?.split('@')[0] || 'Usuario',
+        userId: user.uid,
+        authorName: activeProfile?.name || user.displayName || user.email?.split('@')[0] || 'Usuario',
         avatar: activeProfile?.avatar || DEFAULT_AVATAR,
         rating: selectedRating,
         comment,
         updatedAt: serverTimestamp()
       });
 
-      if (statusEl) statusEl.textContent = L.savedReview;
+      if (statusEl) {
+        statusEl.style.color = 'var(--accent-color)';
+        statusEl.textContent = L.savedReview;
+      }
       btn.textContent = L.updateBtn;
       await loadReviews();
     } catch (err) {
       console.error('Error guardando reseña:', err);
+      if (statusEl) {
+        statusEl.style.color = '#ff6b7a';
+        statusEl.textContent = err.code === 'permission-denied'
+          ? 'Permiso denegado en Firestore (revisa las reglas de "reviews").'
+          : `No se pudo publicar (${err.code || 'error'}).`;
+      }
     } finally {
       btn.disabled = false;
     }
