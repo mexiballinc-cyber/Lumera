@@ -36,54 +36,50 @@ const episodesContainer = $('episodesListContainer');
 
 let currentMedia = null;
 let nextUrl = null;
+let nextEpisodeLabel = '';
 let currentObjectUrl = null;
 let hideTimeout = null;
 let currentAudioUrl = '';
 let currentSubtitleUrl = '';
 let lastSavedSecond = -1;
 let initialSeekApplied = false;
+let nextEpisodeModal = null;
 
-// Control de "¿Sigues viendo?" (45 min sin interacción)
-const STILL_WATCHING_MS = 45 * 60 * 1000;
-let stillWatchingTimer = null;
-let stillWatchingAutoExitTimer = null;
-let stillWatchingModal = null;
-
-const STILL_WATCHING_TEXT = {
+const NEXT_EP_TEXT = {
   es: {
-    kicker: 'LUMERA · PAUSA AUTOMÁTICA',
-    title: '¿Sigues viendo?',
-    subtitle: 'Llevas un buen rato sin interactuar con el reproductor.',
-    continueBtn: 'Continuar viendo',
-    exitBtn: 'Volver al inicio'
+    kicker: 'EPISODIO FINALIZADO',
+    title: '¿Seguir viendo?',
+    subtitleFallback: '¿Quieres continuar con el siguiente episodio?',
+    yesBtn: 'Sí',
+    noBtn: 'No'
   },
   en: {
-    kicker: 'LUMERA · AUTO PAUSE',
-    title: 'Are you still watching?',
-    subtitle: "You haven't interacted with the player for a while.",
-    continueBtn: 'Continue watching',
-    exitBtn: 'Back to home'
+    kicker: 'EPISODE FINISHED',
+    title: 'Continue watching?',
+    subtitleFallback: 'Do you want to play the next episode?',
+    yesBtn: 'Yes',
+    noBtn: 'No'
   },
   pt: {
-    kicker: 'LUMERA · PAUSA AUTOMÁTICA',
-    title: 'Você ainda está assistindo?',
-    subtitle: 'Você está há algum tempo sem interagir com o player.',
-    continueBtn: 'Continuar assistindo',
-    exitBtn: 'Voltar ao início'
+    kicker: 'EPISÓDIO FINALIZADO',
+    title: 'Continuar assistindo?',
+    subtitleFallback: 'Deseja assistir ao próximo episódio?',
+    yesBtn: 'Sim',
+    noBtn: 'Não'
   },
   fr: {
-    kicker: 'LUMERA · PAUSE AUTOMATIQUE',
-    title: 'Vous regardez toujours ?',
-    subtitle: "Vous n'avez pas interagi avec le lecteur depuis un moment.",
-    continueBtn: 'Continuer à regarder',
-    exitBtn: "Retour à l'accueil"
+    kicker: 'ÉPISODE TERMINÉ',
+    title: 'Continuer à regarder ?',
+    subtitleFallback: "Voulez-vous lancer l'épisode suivant ?",
+    yesBtn: 'Oui',
+    noBtn: 'Non'
   }
 }[lang] || {
-  kicker: 'LUMERA · PAUSA AUTOMÁTICA',
-  title: '¿Sigues viendo?',
-  subtitle: 'Llevas un buen rato sin interactuar con el reproductor.',
-  continueBtn: 'Continuar viendo',
-  exitBtn: 'Volver al inicio'
+  kicker: 'EPISODIO FINALIZADO',
+  title: '¿Seguir viendo?',
+  subtitleFallback: '¿Quieres continuar con el siguiente episodio?',
+  yesBtn: 'Sí',
+  noBtn: 'No'
 };
 
 // Aplicar color de acento guardado en el reproductor
@@ -93,145 +89,136 @@ if (savedAccent && /^#[\da-f]{6}$/i.test(savedAccent)) {
   document.documentElement.style.setProperty('--accent-glow', `${savedAccent}55`);
 }
 
-function ensureStillWatchingModal() {
-  if (stillWatchingModal) return stillWatchingModal;
+function showNextEpisodePrompt() {
+  if (!nextUrl) {
+    if (mediaId) removeFromHistory(mediaId);
+    location.href = 'home.html';
+    return;
+  }
 
-  const style = document.createElement('style');
-  style.textContent = `
-    .still-watching-backdrop {
-      position: fixed;
-      inset: 0;
-      z-index: 9999;
-      display: none;
-      align-items: center;
-      justify-content: center;
-      padding: 20px;
-      background: rgba(0, 0, 0, 0.72);
-      backdrop-filter: blur(10px);
-    }
-    .still-watching-backdrop.is-open {
-      display: flex;
-    }
-    .still-watching-card {
-      width: min(440px, 100%);
-      padding: 26px 24px;
-      border-radius: 22px;
-      background: rgba(20, 20, 24, 0.88);
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.75);
-      backdrop-filter: blur(24px) saturate(150%);
-      color: #f7f5ef;
-      text-align: center;
-    }
-    .still-watching-kicker {
-      margin: 0 0 8px;
-      font-size: 0.72rem;
-      font-weight: 800;
-      letter-spacing: 0.16em;
-      color: var(--accent-color, #d4af37);
-    }
-    .still-watching-card h3 {
-      margin: 0 0 8px;
-      font-size: 1.55rem;
-      font-weight: 800;
-      letter-spacing: -0.03em;
-    }
-    .still-watching-card p {
-      margin: 0 0 20px;
-      font-size: 0.92rem;
-      color: #b8b4ac;
-      line-height: 1.5;
-    }
-    .still-watching-actions {
-      display: flex;
-      gap: 10px;
-      justify-content: center;
-      flex-wrap: wrap;
-    }
-    .still-watching-btn-primary {
-      flex: 1;
-      min-width: 150px;
-      min-height: 44px;
-      padding: 0 18px;
-      border-radius: 12px;
-      border: 0;
-      background: var(--accent-color, #d4af37);
-      color: #161208;
-      font-weight: 750;
-      cursor: pointer;
-    }
-    .still-watching-btn-secondary {
-      flex: 1;
-      min-width: 140px;
-      min-height: 44px;
-      padding: 0 18px;
-      border-radius: 12px;
-      border: 1px solid rgba(255, 255, 255, 0.16);
-      background: rgba(255, 255, 255, 0.06);
-      color: #f7f5ef;
-      font-weight: 650;
-      cursor: pointer;
-    }
-  `;
-  document.head.appendChild(style);
+  if (!nextEpisodeModal) {
+    const style = document.createElement('style');
+    style.textContent = `
+      .next-ep-backdrop {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: rgba(0, 0, 0, 0.76);
+        backdrop-filter: blur(12px);
+      }
+      .next-ep-backdrop.is-open {
+        display: flex;
+      }
+      .next-ep-card {
+        width: min(430px, 100%);
+        padding: 26px 24px;
+        border-radius: 22px;
+        background: rgba(20, 20, 24, 0.9);
+        border: 1px solid rgba(255, 255, 255, 0.16);
+        box-shadow: 0 28px 80px rgba(0, 0, 0, 0.8);
+        backdrop-filter: blur(24px) saturate(155%);
+        color: #f7f5ef;
+        text-align: center;
+      }
+      .next-ep-kicker {
+        margin: 0 0 8px;
+        font-size: 0.72rem;
+        font-weight: 800;
+        letter-spacing: 0.16em;
+        color: var(--accent-color, #d4af37);
+      }
+      .next-ep-card h3 {
+        margin: 0 0 8px;
+        font-size: 1.6rem;
+        font-weight: 800;
+        letter-spacing: -0.03em;
+      }
+      .next-ep-card p {
+        margin: 0 0 22px;
+        font-size: 0.94rem;
+        color: #c7c3ba;
+        line-height: 1.5;
+      }
+      .next-ep-actions {
+        display: flex;
+        gap: 12px;
+        justify-content: center;
+      }
+      .next-ep-btn-yes {
+        flex: 1;
+        min-height: 46px;
+        padding: 0 20px;
+        border-radius: 12px;
+        border: 0;
+        background: var(--accent-color, #d4af37);
+        color: #161208;
+        font-size: 0.96rem;
+        font-weight: 800;
+        cursor: pointer;
+        transition: transform 0.15s;
+      }
+      .next-ep-btn-yes:hover {
+        transform: scale(1.02);
+      }
+      .next-ep-btn-no {
+        flex: 1;
+        min-height: 46px;
+        padding: 0 20px;
+        border-radius: 12px;
+        border: 1px solid rgba(255, 255, 255, 0.18);
+        background: rgba(255, 255, 255, 0.07);
+        color: #f7f5ef;
+        font-size: 0.96rem;
+        font-weight: 700;
+        cursor: pointer;
+        transition: background 0.15s;
+      }
+      .next-ep-btn-no:hover {
+        background: rgba(255, 255, 255, 0.14);
+      }
+    `;
+    document.head.appendChild(style);
 
-  const backdrop = document.createElement('div');
-  backdrop.className = 'still-watching-backdrop';
-  backdrop.id = 'stillWatchingModal';
-  backdrop.setAttribute('role', 'dialog');
-  backdrop.setAttribute('aria-modal', 'true');
-  backdrop.innerHTML = `
-    <div class="still-watching-card">
-      <p class="still-watching-kicker">${STILL_WATCHING_TEXT.kicker}</p>
-      <h3>${STILL_WATCHING_TEXT.title}</h3>
-      <p>${STILL_WATCHING_TEXT.subtitle}</p>
-      <div class="still-watching-actions">
-        <button type="button" class="still-watching-btn-primary" id="stillWatchingContinueBtn">${STILL_WATCHING_TEXT.continueBtn}</button>
-        <button type="button" class="still-watching-btn-secondary" id="stillWatchingExitBtn">${STILL_WATCHING_TEXT.exitBtn}</button>
+    const backdrop = document.createElement('div');
+    backdrop.className = 'next-ep-backdrop';
+    backdrop.id = 'nextEpisodeModal';
+    backdrop.setAttribute('role', 'dialog');
+    backdrop.setAttribute('aria-modal', 'true');
+    backdrop.innerHTML = `
+      <div class="next-ep-card">
+        <p class="next-ep-kicker">${NEXT_EP_TEXT.kicker}</p>
+        <h3>${NEXT_EP_TEXT.title}</h3>
+        <p id="nextEpisodeSubtitle"></p>
+        <div class="next-ep-actions">
+          <button type="button" class="next-ep-btn-yes" id="nextEpYesBtn">${NEXT_EP_TEXT.yesBtn}</button>
+          <button type="button" class="next-ep-btn-no" id="nextEpNoBtn">${NEXT_EP_TEXT.noBtn}</button>
+        </div>
       </div>
-    </div>
-  `;
-  document.body.appendChild(backdrop);
+    `;
+    document.body.appendChild(backdrop);
 
-  backdrop.querySelector('#stillWatchingContinueBtn').addEventListener('click', () => {
-    closeStillWatchingModal();
-    video.play().catch(() => {});
-  });
+    backdrop.querySelector('#nextEpYesBtn').addEventListener('click', () => {
+      if (nextUrl) location.href = nextUrl;
+    });
 
-  backdrop.querySelector('#stillWatchingExitBtn').addEventListener('click', () => {
-    location.href = 'home.html';
-  });
+    backdrop.querySelector('#nextEpNoBtn').addEventListener('click', () => {
+      location.href = 'home.html';
+    });
 
-  stillWatchingModal = backdrop;
-  return backdrop;
-}
+    nextEpisodeModal = backdrop;
+  }
 
-function openStillWatchingModal() {
-  const modalEl = ensureStillWatchingModal();
-  video.pause();
+  const subEl = nextEpisodeModal.querySelector('#nextEpisodeSubtitle');
+  if (subEl) {
+    subEl.textContent = nextEpisodeLabel || NEXT_EP_TEXT.subtitleFallback;
+  }
+
   document.body.classList.remove('controls-hidden');
-  modalEl.classList.add('is-open');
-
-  clearTimeout(stillWatchingAutoExitTimer);
-  stillWatchingAutoExitTimer = setTimeout(() => {
-    location.href = 'home.html';
-  }, 30000);
-}
-
-function closeStillWatchingModal() {
-  clearTimeout(stillWatchingAutoExitTimer);
-  if (stillWatchingModal) stillWatchingModal.classList.remove('is-open');
-  resetStillWatchingTimer();
-}
-
-function resetStillWatchingTimer() {
-  clearTimeout(stillWatchingTimer);
-  if (stillWatchingModal?.classList.contains('is-open')) return;
-  stillWatchingTimer = setTimeout(() => {
-    if (!video.paused && !video.ended) {
-      openStillWatchingModal();
-    }
-  }, STILL_WATCHING_MS);
+  nextEpisodeModal.classList.add('is-open');
 }
 
 function isAnyDropdownOpen() {
@@ -249,7 +236,7 @@ function resetControlsTimer() {
   document.body.classList.remove('controls-hidden');
   clearTimeout(hideTimeout);
   hideTimeout = setTimeout(() => {
-    const isModalOpen = (modal && !modal.hidden) || stillWatchingModal?.classList.contains('is-open');
+    const isModalOpen = (modal && !modal.hidden) || nextEpisodeModal?.classList.contains('is-open');
     if (!video.paused && !video.ended && !isModalOpen && !isAnyDropdownOpen()) {
       document.body.classList.add('controls-hidden');
     }
@@ -257,10 +244,7 @@ function resetControlsTimer() {
 }
 
 ['pointermove', 'pointerdown', 'touchstart', 'click', 'keydown'].forEach(evt => {
-  document.addEventListener(evt, () => {
-    resetControlsTimer();
-    resetStillWatchingTimer();
-  }, { passive: true });
+  document.addEventListener(evt, resetControlsTimer, { passive: true });
 });
 
 document.addEventListener('click', (e) => {
@@ -295,10 +279,7 @@ if (subtitleBtn && subtitleMenu) {
   });
 }
 
-video.addEventListener('playing', () => {
-  resetControlsTimer();
-  resetStillWatchingTimer();
-});
+video.addEventListener('playing', resetControlsTimer);
 
 function formatTime(seconds) {
   if (isNaN(seconds)) return '00:00';
@@ -399,14 +380,17 @@ async function init() {
 
     if (!isSeries) {
       if (mediaTitle) mediaTitle.textContent = title;
+      nextUrl = null;
       loadSources(currentMedia.sources, currentMedia.subtitles);
     } else {
       const seasonData = currentMedia.seasons?.find(s => Number(s.seasonNumber) === requestedSeason) || currentMedia.seasons?.[0];
       const episodeData = seasonData?.episodes?.find(e => Number(e.episodeNumber) === requestedEp) || seasonData?.episodes?.[0];
 
       if (episodeData) {
+        const currentSeasonNum = Number(seasonData.seasonNumber || requestedSeason);
+        const currentEpNum = Number(episodeData.episodeNumber || requestedEp);
         const epTitle = episodeData.i18n?.[lang]?.title || episodeData.i18n?.es?.title || episodeData.title || '';
-        if (mediaTitle) mediaTitle.textContent = `${title} — T${seasonData.seasonNumber || requestedSeason}:E${episodeData.episodeNumber || requestedEp} ${epTitle}`;
+        if (mediaTitle) mediaTitle.textContent = `${title} — T${currentSeasonNum}:E${currentEpNum} ${epTitle}`;
         loadSources(episodeData.sources, episodeData.subtitles);
 
         const totalEpisodes = (currentMedia.seasons || []).reduce((acc, s) => acc + (s.episodes?.length || 0), 0);
@@ -415,13 +399,23 @@ async function init() {
           renderEpisodesList();
         }
 
-        const nextEpInSeason = seasonData.episodes?.find(e => Number(e.episodeNumber) === requestedEp + 1);
+        // Buscar siguiente episodio en la temporada actual o en la siguiente temporada
+        const nextEpInSeason = seasonData.episodes?.find(e => Number(e.episodeNumber) === currentEpNum + 1);
         if (nextEpInSeason) {
-          nextUrl = `play.html?id=${encodeURIComponent(mediaId)}&ep=${nextEpInSeason.episodeNumber}&season=${seasonData.seasonNumber || requestedSeason}`;
+          const nextTitle = nextEpInSeason.i18n?.[lang]?.title || nextEpInSeason.i18n?.es?.title || nextEpInSeason.title || '';
+          nextUrl = `play.html?id=${encodeURIComponent(mediaId)}&ep=${nextEpInSeason.episodeNumber}&season=${currentSeasonNum}`;
+          nextEpisodeLabel = `T${currentSeasonNum}:E${nextEpInSeason.episodeNumber}${nextTitle ? ` — ${nextTitle}` : ''}`;
         } else {
-          const nextSeason = currentMedia.seasons?.find(s => Number(s.seasonNumber) === (requestedSeason + 1));
-          if (nextSeason?.episodes?.length) {
-            nextUrl = `play.html?id=${encodeURIComponent(mediaId)}&ep=${nextSeason.episodes[0].episodeNumber || 1}&season=${nextSeason.seasonNumber}`;
+          const nextSeason = currentMedia.seasons?.find(s => Number(s.seasonNumber) === currentSeasonNum + 1);
+          const firstNextSeasonEp = nextSeason?.episodes?.[0];
+          if (firstNextSeasonEp) {
+            const nextEpNum = firstNextSeasonEp.episodeNumber || 1;
+            const nextTitle = firstNextSeasonEp.i18n?.[lang]?.title || firstNextSeasonEp.i18n?.es?.title || firstNextSeasonEp.title || '';
+            nextUrl = `play.html?id=${encodeURIComponent(mediaId)}&ep=${nextEpNum}&season=${nextSeason.seasonNumber}`;
+            nextEpisodeLabel = `T${nextSeason.seasonNumber}:E${nextEpNum}${nextTitle ? ` — ${nextTitle}` : ''}`;
+          } else {
+            nextUrl = null;
+            nextEpisodeLabel = '';
           }
         }
       }
@@ -571,14 +565,13 @@ video.onplay = () => {
   if (playIcon) playIcon.style.display = 'none';
   if (pauseIcon) pauseIcon.style.display = 'block';
   resetControlsTimer();
-  resetStillWatchingTimer();
 };
 
 video.onpause = () => {
   if (playIcon) playIcon.style.display = 'block';
   if (pauseIcon) pauseIcon.style.display = 'none';
   document.body.classList.remove('controls-hidden');
-  if (mediaId && video.currentTime > 0) {
+  if (mediaId && video.currentTime > 0 && !video.ended) {
     saveHistory(mediaId, requestedSeason, requestedEp, video.currentTime);
   }
 };
@@ -590,7 +583,7 @@ video.ontimeupdate = () => {
   if (timeDisplay) timeDisplay.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
 
   const sec = Math.floor(video.currentTime);
-  if (mediaId && sec > 0 && sec - lastSavedSecond >= 5) {
+  if (mediaId && sec > 0 && sec - lastSavedSecond >= 5 && !video.ended) {
     lastSavedSecond = sec;
     saveHistory(mediaId, requestedSeason, requestedEp, sec);
   }
@@ -613,7 +606,7 @@ if (moreBtn && modal) {
 
 if (backBtn) {
   backBtn.onclick = () => {
-    if (mediaId && video.currentTime > 0) {
+    if (mediaId && video.currentTime > 0 && !video.ended) {
       saveHistory(mediaId, requestedSeason, requestedEp, video.currentTime);
     }
     location.href = `details.html?id=${encodeURIComponent(mediaId)}`;
@@ -627,9 +620,10 @@ document.addEventListener('keydown', (e) => {
   }
 });
 
+// Al acabar el capítulo: pregunta "¿Seguir viendo?" solo si existe un siguiente episodio
 video.onended = () => {
   if (nextUrl) {
-    location.href = nextUrl;
+    showNextEpisodePrompt();
   } else {
     if (mediaId) removeFromHistory(mediaId);
     location.href = 'home.html';
