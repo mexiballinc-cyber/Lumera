@@ -33,6 +33,100 @@
     .details-actions { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; margin-top: 8px; }
     .details-actions .icon-svg { width: 18px; height: 18px; fill: currentColor; stroke: none; }
 
+    /* Botón de Tráiler Liquid Glass */
+    .trailer-btn {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      gap: 9px;
+      min-height: 50px;
+      padding: 0 22px;
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      background: rgba(255, 255, 255, 0.1);
+      backdrop-filter: blur(16px);
+      -webkit-backdrop-filter: blur(16px);
+      color: #fff;
+      font-weight: 700;
+      font-size: .98rem;
+      cursor: pointer;
+      transition: transform .18s ease, border-color .18s ease, background .18s ease, color .18s ease;
+    }
+    .trailer-btn[hidden] { display: none; }
+    .trailer-btn:hover {
+      transform: translateY(-2px);
+      border-color: var(--accent-color);
+      background: color-mix(in srgb, var(--accent-color) 18%, rgba(255,255,255,.08));
+      color: var(--accent-color);
+    }
+    .trailer-btn svg { width: 18px; height: 18px; fill: none; stroke: currentColor; stroke-width: 2; stroke-linecap: round; stroke-linejoin: round; }
+
+    /* Modal Reproductor de Tráiler */
+    .trailer-modal-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 60;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.82);
+      backdrop-filter: blur(14px);
+      -webkit-backdrop-filter: blur(14px);
+    }
+    .trailer-modal-backdrop.is-open { display: flex; }
+    .trailer-modal-card {
+      width: min(920px, 100%);
+      border-radius: 22px;
+      overflow: hidden;
+      background: rgba(16, 16, 20, 0.94);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 32px 90px rgba(0, 0, 0, 0.85);
+    }
+    .trailer-modal-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 14px 18px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .trailer-modal-head h3 {
+      margin: 0;
+      font-size: 1rem;
+      font-weight: 750;
+      color: #f7f5ef;
+    }
+    .trailer-close-btn {
+      width: 36px;
+      height: 36px;
+      border-radius: 50%;
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      background: rgba(255, 255, 255, 0.07);
+      color: #fff;
+      font-size: 1.2rem;
+      cursor: pointer;
+      display: grid;
+      place-items: center;
+      transition: .18s;
+    }
+    .trailer-close-btn:hover { border-color: var(--accent-color); color: var(--accent-color); }
+    .trailer-stage {
+      position: relative;
+      width: 100%;
+      aspect-ratio: 16 / 9;
+      background: #000;
+    }
+    .trailer-stage video,
+    .trailer-stage iframe {
+      position: absolute;
+      inset: 0;
+      width: 100%;
+      height: 100%;
+      border: 0;
+      background: #000;
+    }
+
     .details-episodes, .participants-block, .reviews-block { max-width: 1200px; margin: 0 auto; padding: 24px clamp(18px, 5vw, 60px) 36px; }
     .details-episodes h2, .participants-heading, .reviews-heading { font-size: 1.45rem; font-weight: 800; margin: 0 0 16px; color: var(--text-main); font-family: var(--font-display); letter-spacing: -.03em; }
 
@@ -105,6 +199,10 @@
             <svg class="icon-svg" viewBox="0 0 24 24"><path d="M8 5v14l11-7z"/></svg>
             <span data-i18n="play">Reproducir</span>
           </button>
+          <button id="trailerBtn" class="trailer-btn" type="button" hidden>
+            <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="2.18" ry="2.18"/><line x1="7" y1="2" x2="7" y2="22"/><line x1="17" y1="2" x2="17" y2="22"/><line x1="2" y1="12" x2="22" y2="12"/><line x1="2" y1="7" x2="7" y2="7"/><line x1="2" y1="17" x2="7" y2="17"/><line x1="17" y1="17" x2="22" y2="17"/><line x1="17" y1="7" x2="22" y2="7"/></svg>
+            <span id="trailerBtnLabel">Tráiler</span>
+          </button>
         </div>
       </div>
     </header>
@@ -142,6 +240,17 @@
 
     <p id="detailsError" class="details-state" role="status" hidden></p>
   </main>
+
+  <!-- MODAL REPRODUCTOR DE TRÁILER -->
+  <div id="trailerModal" class="trailer-modal-backdrop" role="dialog" aria-modal="true" aria-labelledby="trailerModalTitle">
+    <div class="trailer-modal-card">
+      <div class="trailer-modal-head">
+        <h3 id="trailerModalTitle">Tráiler</h3>
+        <button type="button" class="trailer-close-btn" id="closeTrailerModalBtn" aria-label="Cerrar tráiler">×</button>
+      </div>
+      <div class="trailer-stage" id="trailerStage"></div>
+    </div>
+  </div>
 
   <script type="module" src="details.js"></script>
 </body>
