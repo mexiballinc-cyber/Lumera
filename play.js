@@ -6,6 +6,7 @@ const params = new URLSearchParams(window.location.search);
 const mediaId = params.get('id');
 const requestedEp = Number(params.get('ep') || 1);
 const requestedSeason = Number(params.get('season') || 1);
+const requestedTime = Math.max(0, Math.floor(Number(params.get('t') || 0)));
 const lang = getLanguage();
 const $ = id => document.getElementById(id);
 
@@ -39,12 +40,198 @@ let currentObjectUrl = null;
 let hideTimeout = null;
 let currentAudioUrl = '';
 let currentSubtitleUrl = '';
+let lastSavedSecond = -1;
+let initialSeekApplied = false;
+
+// Control de "¿Sigues viendo?" (45 min sin interacción)
+const STILL_WATCHING_MS = 45 * 60 * 1000;
+let stillWatchingTimer = null;
+let stillWatchingAutoExitTimer = null;
+let stillWatchingModal = null;
+
+const STILL_WATCHING_TEXT = {
+  es: {
+    kicker: 'LUMERA · PAUSA AUTOMÁTICA',
+    title: '¿Sigues viendo?',
+    subtitle: 'Llevas un buen rato sin interactuar con el reproductor.',
+    continueBtn: 'Continuar viendo',
+    exitBtn: 'Volver al inicio'
+  },
+  en: {
+    kicker: 'LUMERA · AUTO PAUSE',
+    title: 'Are you still watching?',
+    subtitle: "You haven't interacted with the player for a while.",
+    continueBtn: 'Continue watching',
+    exitBtn: 'Back to home'
+  },
+  pt: {
+    kicker: 'LUMERA · PAUSA AUTOMÁTICA',
+    title: 'Você ainda está assistindo?',
+    subtitle: 'Você está há algum tempo sem interagir com o player.',
+    continueBtn: 'Continuar assistindo',
+    exitBtn: 'Voltar ao início'
+  },
+  fr: {
+    kicker: 'LUMERA · PAUSE AUTOMATIQUE',
+    title: 'Vous regardez toujours ?',
+    subtitle: "Vous n'avez pas interagi avec le lecteur depuis un moment.",
+    continueBtn: 'Continuer à regarder',
+    exitBtn: "Retour à l'accueil"
+  }
+}[lang] || {
+  kicker: 'LUMERA · PAUSA AUTOMÁTICA',
+  title: '¿Sigues viendo?',
+  subtitle: 'Llevas un buen rato sin interactuar con el reproductor.',
+  continueBtn: 'Continuar viendo',
+  exitBtn: 'Volver al inicio'
+};
 
 // Aplicar color de acento guardado en el reproductor
 const savedAccent = localStorage.getItem('lumera_accent_color');
 if (savedAccent && /^#[\da-f]{6}$/i.test(savedAccent)) {
   document.documentElement.style.setProperty('--accent-color', savedAccent);
   document.documentElement.style.setProperty('--accent-glow', `${savedAccent}55`);
+}
+
+function ensureStillWatchingModal() {
+  if (stillWatchingModal) return stillWatchingModal;
+
+  const style = document.createElement('style');
+  style.textContent = `
+    .still-watching-backdrop {
+      position: fixed;
+      inset: 0;
+      z-index: 9999;
+      display: none;
+      align-items: center;
+      justify-content: center;
+      padding: 20px;
+      background: rgba(0, 0, 0, 0.72);
+      backdrop-filter: blur(10px);
+    }
+    .still-watching-backdrop.is-open {
+      display: flex;
+    }
+    .still-watching-card {
+      width: min(440px, 100%);
+      padding: 26px 24px;
+      border-radius: 22px;
+      background: rgba(20, 20, 24, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      box-shadow: 0 28px 80px rgba(0, 0, 0, 0.75);
+      backdrop-filter: blur(24px) saturate(150%);
+      color: #f7f5ef;
+      text-align: center;
+    }
+    .still-watching-kicker {
+      margin: 0 0 8px;
+      font-size: 0.72rem;
+      font-weight: 800;
+      letter-spacing: 0.16em;
+      color: var(--accent-color, #d4af37);
+    }
+    .still-watching-card h3 {
+      margin: 0 0 8px;
+      font-size: 1.55rem;
+      font-weight: 800;
+      letter-spacing: -0.03em;
+    }
+    .still-watching-card p {
+      margin: 0 0 20px;
+      font-size: 0.92rem;
+      color: #b8b4ac;
+      line-height: 1.5;
+    }
+    .still-watching-actions {
+      display: flex;
+      gap: 10px;
+      justify-content: center;
+      flex-wrap: wrap;
+    }
+    .still-watching-btn-primary {
+      flex: 1;
+      min-width: 150px;
+      min-height: 44px;
+      padding: 0 18px;
+      border-radius: 12px;
+      border: 0;
+      background: var(--accent-color, #d4af37);
+      color: #161208;
+      font-weight: 750;
+      cursor: pointer;
+    }
+    .still-watching-btn-secondary {
+      flex: 1;
+      min-width: 140px;
+      min-height: 44px;
+      padding: 0 18px;
+      border-radius: 12px;
+      border: 1px solid rgba(255, 255, 255, 0.16);
+      background: rgba(255, 255, 255, 0.06);
+      color: #f7f5ef;
+      font-weight: 650;
+      cursor: pointer;
+    }
+  `;
+  document.head.appendChild(style);
+
+  const backdrop = document.createElement('div');
+  backdrop.className = 'still-watching-backdrop';
+  backdrop.id = 'stillWatchingModal';
+  backdrop.setAttribute('role', 'dialog');
+  backdrop.setAttribute('aria-modal', 'true');
+  backdrop.innerHTML = `
+    <div class="still-watching-card">
+      <p class="still-watching-kicker">${STILL_WATCHING_TEXT.kicker}</p>
+      <h3>${STILL_WATCHING_TEXT.title}</h3>
+      <p>${STILL_WATCHING_TEXT.subtitle}</p>
+      <div class="still-watching-actions">
+        <button type="button" class="still-watching-btn-primary" id="stillWatchingContinueBtn">${STILL_WATCHING_TEXT.continueBtn}</button>
+        <button type="button" class="still-watching-btn-secondary" id="stillWatchingExitBtn">${STILL_WATCHING_TEXT.exitBtn}</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(backdrop);
+
+  backdrop.querySelector('#stillWatchingContinueBtn').addEventListener('click', () => {
+    closeStillWatchingModal();
+    video.play().catch(() => {});
+  });
+
+  backdrop.querySelector('#stillWatchingExitBtn').addEventListener('click', () => {
+    location.href = 'home.html';
+  });
+
+  stillWatchingModal = backdrop;
+  return backdrop;
+}
+
+function openStillWatchingModal() {
+  const modalEl = ensureStillWatchingModal();
+  video.pause();
+  document.body.classList.remove('controls-hidden');
+  modalEl.classList.add('is-open');
+
+  clearTimeout(stillWatchingAutoExitTimer);
+  stillWatchingAutoExitTimer = setTimeout(() => {
+    location.href = 'home.html';
+  }, 30000);
+}
+
+function closeStillWatchingModal() {
+  clearTimeout(stillWatchingAutoExitTimer);
+  if (stillWatchingModal) stillWatchingModal.classList.remove('is-open');
+  resetStillWatchingTimer();
+}
+
+function resetStillWatchingTimer() {
+  clearTimeout(stillWatchingTimer);
+  if (stillWatchingModal?.classList.contains('is-open')) return;
+  stillWatchingTimer = setTimeout(() => {
+    if (!video.paused && !video.ended) {
+      openStillWatchingModal();
+    }
+  }, STILL_WATCHING_MS);
 }
 
 function isAnyDropdownOpen() {
@@ -62,7 +249,7 @@ function resetControlsTimer() {
   document.body.classList.remove('controls-hidden');
   clearTimeout(hideTimeout);
   hideTimeout = setTimeout(() => {
-    const isModalOpen = modal && !modal.hidden;
+    const isModalOpen = (modal && !modal.hidden) || stillWatchingModal?.classList.contains('is-open');
     if (!video.paused && !video.ended && !isModalOpen && !isAnyDropdownOpen()) {
       document.body.classList.add('controls-hidden');
     }
@@ -70,7 +257,10 @@ function resetControlsTimer() {
 }
 
 ['pointermove', 'pointerdown', 'touchstart', 'click', 'keydown'].forEach(evt => {
-  document.addEventListener(evt, resetControlsTimer, { passive: true });
+  document.addEventListener(evt, () => {
+    resetControlsTimer();
+    resetStillWatchingTimer();
+  }, { passive: true });
 });
 
 document.addEventListener('click', (e) => {
@@ -105,21 +295,33 @@ if (subtitleBtn && subtitleMenu) {
   });
 }
 
-video.addEventListener('playing', resetControlsTimer);
+video.addEventListener('playing', () => {
+  resetControlsTimer();
+  resetStillWatchingTimer();
+});
 
 function formatTime(seconds) {
-  if (isNaN(seconds)) return "00:00";
+  if (isNaN(seconds)) return '00:00';
   const m = Math.floor(seconds / 60);
   const s = Math.floor(seconds % 60);
   return `${m < 10 ? '0' : ''}${m}:${s < 10 ? '0' : ''}${s}`;
 }
 
-function saveHistory(id, season, ep) {
+function saveHistory(id, season, ep, currentTimeSeconds = 0) {
+  try {
+    let history = JSON.parse(localStorage.getItem('lumera_continue_watching') || '[]');
+    const cleanTime = Math.max(0, Math.floor(Number(currentTimeSeconds || 0)));
+    history = history.filter(item => (typeof item === 'string' ? item : item.id) !== id);
+    history.unshift({ id, season, ep, time: cleanTime, updatedAt: Date.now() });
+    localStorage.setItem('lumera_continue_watching', JSON.stringify(history.slice(0, 25)));
+  } catch (e) {}
+}
+
+function removeFromHistory(id) {
   try {
     let history = JSON.parse(localStorage.getItem('lumera_continue_watching') || '[]');
     history = history.filter(item => (typeof item === 'string' ? item : item.id) !== id);
-    history.unshift({ id, season, ep, updatedAt: Date.now() });
-    localStorage.setItem('lumera_continue_watching', JSON.stringify(history.slice(0, 25)));
+    localStorage.setItem('lumera_continue_watching', JSON.stringify(history));
   } catch (e) {}
 }
 
@@ -134,19 +336,19 @@ async function activateSubtitleTrack(targetUrl) {
   if (!targetUrl) return;
 
   try {
-    let cleanUrl = targetUrl.trim()
-      .replace("www.dropbox.com", "dl.dropboxusercontent.com")
-      .replace("?dl=0", "")
-      .replace("&dl=0", "")
-      .replace("?raw=1", "");
+    const cleanUrl = targetUrl.trim()
+      .replace('www.dropbox.com', 'dl.dropboxusercontent.com')
+      .replace('?dl=0', '')
+      .replace('&dl=0', '')
+      .replace('?raw=1', '');
 
     const res = await fetch(cleanUrl);
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
 
     let text = await res.text();
     text = text.replace(/\r\n/g, '\n').replace(/\r/g, '\n');
-    if (!text.trim().startsWith("WEBVTT")) {
-      text = "WEBVTT\n\n" + text.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, "$1.$2");
+    if (!text.trim().startsWith('WEBVTT')) {
+      text = 'WEBVTT\n\n' + text.replace(/(\d{2}:\d{2}:\d{2}),(\d{3})/g, '$1.$2');
     }
 
     const blob = new Blob([text], { type: 'text/vtt;charset=utf-8' });
@@ -167,7 +369,7 @@ async function activateSubtitleTrack(targetUrl) {
       }
     }, 100);
   } catch (err) {
-    console.warn("Fallo fetch de subtítulo, usando fallback directo:", err);
+    console.warn('Fallo fetch de subtítulo, usando fallback directo:', err);
     const track = document.createElement('track');
     track.kind = 'subtitles';
     track.label = 'Subtítulo';
@@ -190,7 +392,7 @@ async function init() {
     if (!snap.exists()) { location.href = 'home.html'; return; }
     currentMedia = snap.data();
 
-    saveHistory(mediaId, requestedSeason, requestedEp);
+    saveHistory(mediaId, requestedSeason, requestedEp, requestedTime);
 
     const isSeries = currentMedia.type === 'series';
     const title = currentMedia.i18n?.[lang]?.title || currentMedia.i18n?.es?.title || currentMedia.title || 'Lumera';
@@ -240,7 +442,7 @@ function updateMenuSelection(menuEl, selectedValue) {
 
 function loadSources(sources = {}, subtitles = {}) {
   const audioKeys = Object.keys(sources);
-  let selectedAudioKey = audioKeys.includes(lang) ? lang : (audioKeys[0] || '');
+  const selectedAudioKey = audioKeys.includes(lang) ? lang : (audioKeys[0] || '');
   currentAudioUrl = selectedAudioKey ? sources[selectedAudioKey] : '';
 
   if (audioLabel) audioLabel.textContent = selectedAudioKey ? selectedAudioKey.toUpperCase() : '—';
@@ -323,6 +525,12 @@ function loadSources(sources = {}, subtitles = {}) {
 
   if (currentAudioUrl) {
     video.src = currentAudioUrl;
+    video.addEventListener('loadedmetadata', () => {
+      if (!initialSeekApplied && requestedTime > 0 && requestedTime < video.duration - 5) {
+        initialSeekApplied = true;
+        video.currentTime = requestedTime;
+      }
+    }, { once: true });
     video.play().catch(() => {});
   }
 
@@ -363,12 +571,16 @@ video.onplay = () => {
   if (playIcon) playIcon.style.display = 'none';
   if (pauseIcon) pauseIcon.style.display = 'block';
   resetControlsTimer();
+  resetStillWatchingTimer();
 };
 
 video.onpause = () => {
   if (playIcon) playIcon.style.display = 'block';
   if (pauseIcon) pauseIcon.style.display = 'none';
   document.body.classList.remove('controls-hidden');
+  if (mediaId && video.currentTime > 0) {
+    saveHistory(mediaId, requestedSeason, requestedEp, video.currentTime);
+  }
 };
 
 video.ontimeupdate = () => {
@@ -376,6 +588,12 @@ video.ontimeupdate = () => {
   const pct = (video.currentTime / video.duration) * 100;
   if (progressFill) progressFill.style.width = `${pct}%`;
   if (timeDisplay) timeDisplay.textContent = `${formatTime(video.currentTime)} / ${formatTime(video.duration)}`;
+
+  const sec = Math.floor(video.currentTime);
+  if (mediaId && sec > 0 && sec - lastSavedSecond >= 5) {
+    lastSavedSecond = sec;
+    saveHistory(mediaId, requestedSeason, requestedEp, sec);
+  }
 };
 
 if (progressBar) {
@@ -394,7 +612,12 @@ if (moreBtn && modal) {
 }
 
 if (backBtn) {
-  backBtn.onclick = () => { location.href = `details.html?id=${encodeURIComponent(mediaId)}`; };
+  backBtn.onclick = () => {
+    if (mediaId && video.currentTime > 0) {
+      saveHistory(mediaId, requestedSeason, requestedEp, video.currentTime);
+    }
+    location.href = `details.html?id=${encodeURIComponent(mediaId)}`;
+  };
 }
 
 document.addEventListener('keydown', (e) => {
@@ -408,6 +631,7 @@ video.onended = () => {
   if (nextUrl) {
     location.href = nextUrl;
   } else {
+    if (mediaId) removeFromHistory(mediaId);
     location.href = 'home.html';
   }
 };
