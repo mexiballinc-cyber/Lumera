@@ -37,6 +37,7 @@ const TYPE_LABELS = {
 
 const LABELS = {
   es: {
+    trailer: 'Tráiler',
     cast: 'Reparto y Participantes',
     director: 'Dirección',
     more: 'Leer más',
@@ -53,6 +54,7 @@ const LABELS = {
     reviewCount: (n) => `${n} ${n === 1 ? 'opinión' : 'opiniones'}`
   },
   en: {
+    trailer: 'Trailer',
     cast: 'Cast & Participants',
     director: 'Director',
     more: 'Read more',
@@ -69,6 +71,7 @@ const LABELS = {
     reviewCount: (n) => `${n} ${n === 1 ? 'review' : 'reviews'}`
   },
   pt: {
+    trailer: 'Trailer',
     cast: 'Elenco e Participantes',
     director: 'Direção',
     more: 'Ler mais',
@@ -85,6 +88,7 @@ const LABELS = {
     reviewCount: (n) => `${n} ${n === 1 ? 'avaliação' : 'avaliações'}`
   },
   fr: {
+    trailer: 'Bande-annonce',
     cast: 'Casting et Participants',
     director: 'Réalisation',
     more: 'Lire la suite',
@@ -119,10 +123,91 @@ function showError(message) {
 }
 
 function applyLocalizedLabels() {
+  if ($('trailerBtnLabel')) $('trailerBtnLabel').textContent = L.trailer;
   if ($('reviewsHeading')) $('reviewsHeading').textContent = L.reviewsTitle;
   if ($('reviewComment')) $('reviewComment').placeholder = L.reviewPlaceholder;
   if ($('submitReviewBtn')) $('submitReviewBtn').textContent = L.publishBtn;
 }
+
+/* RESOLUCIÓN Y MODAL DE TRÁILER */
+function resolveTrailerUrl(media) {
+  const candidates = [
+    media.i18n?.[language]?.trailer,
+    media.i18n?.es?.trailer,
+    media.trailers?.[language],
+    media.trailers?.es,
+    media.trailer,
+    media.trailerUrl,
+    media.videoTrailer,
+    media.videos?.trailer
+  ];
+  const found = candidates.find((v) => typeof v === 'string' && v.trim().length > 0);
+  return found ? found.trim() : '';
+}
+
+function getYoutubeEmbedUrl(url) {
+  const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/|shorts\/)|youtu\.be\/)([a-zA-Z0-9_-]{11})/);
+  return match ? `https://www.youtube.com/embed/${match[1]}?autoplay=1&rel=0` : '';
+}
+
+function openTrailerModal(trailerUrl, mediaTitleText) {
+  const modal = $('trailerModal');
+  const stage = $('trailerStage');
+  const heading = $('trailerModalTitle');
+  if (!modal || !stage || !trailerUrl) return;
+
+  if (heading) heading.textContent = `${L.trailer} — ${mediaTitleText}`;
+  stage.replaceChildren();
+
+  const ytEmbed = getYoutubeEmbedUrl(trailerUrl);
+  if (ytEmbed) {
+    const iframe = document.createElement('iframe');
+    iframe.src = ytEmbed;
+    iframe.title = `${L.trailer} — ${mediaTitleText}`;
+    iframe.allow = 'autoplay; fullscreen; encrypted-media; picture-in-picture';
+    iframe.allowFullscreen = true;
+    stage.appendChild(iframe);
+  } else {
+    const cleanDirectUrl = trailerUrl
+      .replace('www.dropbox.com', 'dl.dropboxusercontent.com')
+      .replace('?dl=0', '?raw=1');
+
+    const videoEl = document.createElement('video');
+    videoEl.src = cleanDirectUrl;
+    videoEl.controls = true;
+    videoEl.autoplay = true;
+    videoEl.playsInline = true;
+    stage.appendChild(videoEl);
+    videoEl.play().catch(() => {});
+  }
+
+  modal.classList.add('is-open');
+}
+
+function closeTrailerModal() {
+  const modal = $('trailerModal');
+  const stage = $('trailerStage');
+  if (!modal) return;
+  modal.classList.remove('is-open');
+  if (stage) {
+    stage.querySelectorAll('video').forEach((v) => {
+      v.pause();
+      v.removeAttribute('src');
+      v.load();
+    });
+    stage.replaceChildren();
+  }
+}
+
+$('closeTrailerModalBtn')?.addEventListener('click', closeTrailerModal);
+$('trailerModal')?.addEventListener('click', (e) => {
+  if (e.target === $('trailerModal')) closeTrailerModal();
+});
+document.addEventListener('keydown', (e) => {
+  if (e.key === 'Escape' && $('trailerModal')?.classList.contains('is-open')) {
+    closeTrailerModal();
+  }
+});
 
 onAuthStateChanged(auth, (user) => {
   currentUser = user;
@@ -211,6 +296,18 @@ async function loadMediaDetails() {
       };
       $('episodesSection').hidden = false;
       renderEpisodes(media);
+    }
+
+    // Mostrar botón de Tráiler solo si existe en Firebase
+    const trailerUrl = resolveTrailerUrl(media);
+    const trailerBtn = $('trailerBtn');
+    if (trailerBtn) {
+      if (trailerUrl) {
+        trailerBtn.hidden = false;
+        trailerBtn.onclick = () => openTrailerModal(trailerUrl, title);
+      } else {
+        trailerBtn.hidden = true;
+      }
     }
 
     renderParticipants(media);
