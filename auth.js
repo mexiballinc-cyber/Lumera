@@ -1,5 +1,11 @@
 import { auth, db } from './firebase.js';
-import { signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, signOut } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  sendPasswordResetEmail,
+  onAuthStateChanged,
+  signOut
+} from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-auth.js';
 import { doc, getDoc, setDoc, updateDoc, collection, getDocs } from 'https://www.gstatic.com/firebasejs/13.2.0/firebase-firestore.js';
 
 const ADMIN_EMAIL = 'jgonzalezgutierrez1@bcedu.mx';
@@ -25,6 +31,8 @@ const authTitle = $('authTitle');
 const authToggle = $('authToggle');
 const authSubmitBtn = $('authSubmitBtn');
 const authMessage = $('authMessage');
+const forgotPasswordRow = $('forgotPasswordRow');
+const forgotPasswordBtn = $('forgotPasswordBtn');
 const profilesSection = $('profilesSection');
 const profilesGrid = $('profilesGrid');
 const headerAdminBtn = $('headerAdminBtn');
@@ -82,6 +90,7 @@ function setAuthMode(registering) {
   authToggle.textContent = registering ? '¿Ya tienes cuenta? Inicia sesión' : '¿No tienes cuenta? Regístrate';
   authToggle.className = 'auth-toggle-btn';
   authPassword.autocomplete = registering ? 'new-password' : 'current-password';
+  if (forgotPasswordRow) forgotPasswordRow.style.display = registering ? 'none' : 'block';
   showAuthMessage();
 }
 
@@ -104,6 +113,70 @@ function setupHeaderTools(isAdmin = Boolean(currentUser?.email?.toLowerCase() ==
   if (!header || header.dataset.toolsReady) return;
   header.dataset.toolsReady = 'true';
 }
+
+/* RECUPERACIÓN DE CONTRASEÑA CON FIREBASE */
+function showResetFeedback(message = '', isSuccess = false) {
+  const el = $('resetPasswordFeedback');
+  if (!el) return;
+  el.textContent = message;
+  el.style.color = isSuccess ? 'var(--accent-color, #d4af37)' : '#ff6b7a';
+  el.hidden = !message;
+  el.style.display = message ? 'block' : 'none';
+}
+
+window.openResetPasswordModal = () => {
+  const modal = $('resetPasswordModal');
+  const input = $('resetEmailInput');
+  if (!modal || !input) return;
+  input.value = authEmail.value.trim();
+  showResetFeedback('');
+  modal.style.display = 'flex';
+  setTimeout(() => input.focus(), 50);
+};
+
+window.closeResetPasswordModal = () => {
+  const modal = $('resetPasswordModal');
+  if (modal) modal.style.display = 'none';
+};
+
+window.submitPasswordReset = async () => {
+  const input = $('resetEmailInput');
+  const btn = $('sendResetEmailBtn');
+  if (!input || !btn) return;
+
+  const email = input.value.trim();
+  if (!email) {
+    showResetFeedback('Escribe el correo asociado a tu cuenta.', false);
+    return;
+  }
+
+  btn.disabled = true;
+  const originalLabel = btn.textContent;
+  btn.textContent = 'Enviando…';
+  showResetFeedback('');
+
+  try {
+    auth.languageCode = localStorage.getItem('lumera_lang') || 'es';
+    await sendPasswordResetEmail(auth, email);
+    showResetFeedback('¡Listo! Revisa tu bandeja de entrada o carpeta de spam para restablecer tu contraseña.', true);
+  } catch (error) {
+    showResetFeedback(getAuthErrorMessage(error), false);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = originalLabel;
+  }
+};
+
+if (forgotPasswordBtn) {
+  forgotPasswordBtn.addEventListener('click', () => window.openResetPasswordModal());
+}
+
+$('resetEmailInput')?.addEventListener('keydown', (event) => {
+  if (event.key === 'Enter') {
+    event.preventDefault();
+    window.submitPasswordReset();
+  }
+});
 
 onAuthStateChanged(auth, async (user) => {
   if (!user) {
